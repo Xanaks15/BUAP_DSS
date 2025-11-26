@@ -1,0 +1,101 @@
+empleado_id,nombre,rol_id,departamento_id
+1,Timoteo Carrasco,2,1
+2,Alberto Laureano,1,5
+3,Felipe Garica,5,2
+4,Clara Canales,4,1
+5,Zoé Trejo,4,1
+6,Asunción Villanueva,3,1
+7,Luisa Aparicio,2,1
+8,Alta  Gracia Cabán,2,1
+9,Esteban Gonzales,7,3
+10,Natalia Zarate,1,5
+11,Aldonza Valentín,1,5
+12,Elvia Trejo,2,1
+13,Lourdes Garay,4,1
+14,Marisol Villalpando,4,1
+15,Germán Aguayo,1,5
+16,Cristobal Pichardo,4,1
+17,Jacinto Ledesma,7,3
+18,Cristal Galván,4,1
+19,Iván Canales,8,4
+20,Aurelio Olivares,5,2
+21,Beatriz Muñoz,1,5
+22,Jaime Zayas,3,1
+23,Gabino Armas,7,3
+24,María Luisa Terán,6,1
+25,Carlota Ochoa,5,2
+26,Arcelia Urías,3,1
+27,Guadalupe Nájera,4,1
+28,Reynaldo Espinosa,6,1
+29,Ángela Armenta,2,1
+30,Virginia Gil,2,1
+31,Gregorio Bétancourt,7,3
+32,Eugenia Campos,2,1
+33,Juan Ledesma,6,1
+34,María Elena Nava,6,1
+35,Dalia Nevárez,5,2
+36,Joaquín Fuentes,1,5
+37,Yuridia Jaramillo,8,4
+38,Vicente Becerra,2,1
+39,Sandra de la Torre,7,3
+40,Oswaldo Guevara,2,1
+41,Dalia Ríos,5,2
+42,Juan Jimínez,6,1
+43,Timoteo Valdés,4,1
+44,Estefanía Meléndez,2,1
+45,Anabel Girón,1,5
+46,Alonso Mata,4,1
+47,Karla Jasso,5,2
+48,Andrés Galarza,2,1
+49,Raquel Mascareñas,4,1
+50,Eric Sanabria,2,1
+51,Leonardo Reynoso,7,3
+52,Claudio Jaimes,5,2
+53,Clara Gurule,8,4
+54,Ramiro Tijerina,6,1
+55,Frida Viera,3,1
+56,Luis Miguel Vergara,6,1
+57,Leonor Nájera,6,1
+58,Estefanía Chavarría,4,1
+59,Nancy Salcido,5,2
+60,Aurora Arreola,2,1
+61,Blanca Corral,3,1
+62,Soledad Crespo,4,1
+63,Luisa Ybarra,3,1
+64,Andrea Olmos,8,4
+65,Juana Ybarra,7,3
+66,Mayte Tafoya,5,2
+67,Fidel Uribe,4,1
+68,Adalberto Carrero,6,1
+69,Omar Jaramillo,1,5
+70,Tomás Molina,4,1
+71,Bruno Lozada,1,5
+72,Manuel Cotto,6,1
+73,María Elena Acosta,7,3
+74,Frida Sanches,5,2
+75,Diego Sarabia,2,1
+76,Bernabé Lugo,4,1
+77,Timoteo Sarabia,6,1
+78,Sandra Farías,4,1
+79,Cristian Niño,8,4
+80,Cynthia Tirado,7,3
+81,Olga Abrego,8,4
+82,Rufino Mejía,3,1
+83,Minerva Almaraz,5,2
+84,Bruno Naranjo,3,1
+85,Homero Grijalva,4,1
+86,Ana Luisa Guajardo,5,2
+87,Raquel Berríos,7,3
+88,Arturo Ruelas,7,3
+89,Ángela Tejada,6,1
+90,Carmen Cazares,4,1
+91,Victoria Roldán,3,1
+92,Paulina de Jesús,8,4
+93,Gabino Suárez,2,1
+94,Samuel Piña,1,5
+95,Eric Tirado,2,1
+96,Elvira Marrero,3,1
+97,Leonor Niño,3,1
+98,Marcela Sierra,7,3
+99,María Cristina Casárez,2,1
+100,Fernando Garza,7,3
