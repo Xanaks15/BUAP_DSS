@@ -13,6 +13,7 @@ const Dashboard = () => {
     const [viewMode, setViewMode] = useState('portfolio'); // 'portfolio' | 'project'
     const [projectMetrics, setProjectMetrics] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [metricsLoading, setMetricsLoading] = useState(false);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     // Filters state
@@ -46,23 +47,26 @@ const Dashboard = () => {
     }, [viewMode, projects]);
 
     useEffect(() => {
+        setMetricsLoading(true);
         if (selectedProjectId) {
-            getProjectMetrics(selectedProjectId).then(setProjectMetrics).catch(console.error);
+            getProjectMetrics(selectedProjectId).then(data => {
+                setProjectMetrics(data);
+                setMetricsLoading(false);
+            }).catch(err => {
+                console.error(err);
+                setMetricsLoading(false);
+            });
         } else {
             // Roll-up / Portfolio View with Slice & Dice Filters
             getGeneralKPIs(filters).then(data => {
                 setProjectMetrics({
                     name: "Vista Portfolio (Global)",
-                    spi: 1.0, // Will be replaced by specific calculation if needed, but usually SPI is project specific. 
-                    // For portfolio, we can use average or just hide it. 
-                    // But user asked for "Eficiencia de Cronograma" in Executive View.
-                    // Let's use the productivity or just keep 1.0 if not strictly defined for portfolio.
-                    // Actually, we can calculate an aggregate SPI = Sum(EV) / Sum(PV).
-                    cpi: 1.0, // Aggregate CPI = Sum(EV) / Sum(AC).
+                    spi: 1.0,
+                    cpi: 1.0,
                     ev: data.total_ev || 0,
                     pv: data.total_pv || 0,
                     ac: data.total_ac || 0,
-                    risk_status: "Low",
+                    risk_status: data.risk_status || "Low",
                     progress_pct: data.tasks_completed_pct || 0,
                     productivity: data.productivity || 0,
                     isPortfolio: true,
@@ -73,12 +77,17 @@ const Dashboard = () => {
                     defects_by_phase: data.defects_by_phase || {},
                     tasks_completed_pct: data.tasks_completed_pct || 0,
                     tasks_delayed_pct: data.tasks_delayed_pct || 0,
+                    tasks_not_completed_pct: data.tasks_not_completed_pct || 0,
                     hours_real_vs_planned_pct: data.hours_real_vs_planned_pct || 0,
                     cost_real_vs_planned_pct: data.cost_real_vs_planned_pct || 0,
                     avg_employees: data.avg_employees_assigned || 0,
                     ...data
                 });
-            }).catch(console.error);
+                setMetricsLoading(false);
+            }).catch(err => {
+                console.error(err);
+                setMetricsLoading(false);
+            });
         }
     }, [selectedProjectId, filters]);
 
@@ -119,17 +128,15 @@ const Dashboard = () => {
         filters.endDate !== ''
     ].filter(Boolean).length;
 
-    if (loading) return <div className="flex items-center justify-center h-full text-corporate-blue">Cargando DSS...</div>;
+    if (loading) return (
+        <div className="flex items-center justify-center h-screen">
+            <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600"></div>
+        </div>
+    );
 
     // Helper to calculate Cost vs Plan %
     const calculateCostVsPlan = (metrics) => {
         if (!metrics || !metrics.pv || metrics.pv === 0) return 0;
-        // Formula: ((AC - PV) / PV) * 100 ?? 
-        // User asked for "Costo Real vs Planificado" and +/-.
-        // Usually variance = AC - PV. 
-        // If AC > PV, over budget (bad, +). If AC < PV, under budget (good, -).
-        // Let's show the percentage difference relative to plan.
-        // ((AC - PV) / PV) * 100
         const diff = metrics.ac - metrics.pv;
         const pct = (diff / metrics.pv) * 100;
         return pct.toFixed(1);
@@ -137,10 +144,10 @@ const Dashboard = () => {
 
     const costVsPlanVal = parseFloat(calculateCostVsPlan(projectMetrics));
     const isOverBudget = costVsPlanVal > 0;
-    const costIcon = isOverBudget ? <TrendingUp size={20} /> : <TrendingUp size={20} className="transform rotate-180" />; // Or just +/- text
+    const costIcon = isOverBudget ? <TrendingUp size={20} /> : <TrendingUp size={20} className="transform rotate-180" />;
 
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
-    const TASK_COLORS = ['#10B981', '#EF4444', '#F59E0B']; // Green, Red, Yellow
+    const TASK_COLORS = ['#10B981', '#EF4444', '#F59E0B'];
 
     return (
         <div className="space-y-6 font-sans text-gray-800">
@@ -197,18 +204,29 @@ const Dashboard = () => {
                             { label: 'Últimos 90 días', days: 90 },
                             { label: 'Año Actual (YTD)', days: 365 },
                             { label: 'Todo el Histórico', days: 'all' }
-                        ].map(preset => (
-                            <button
-                                key={preset.label}
-                                onClick={() => handlePresetClick(preset.days)}
-                                className={`px-3 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${(preset.days === 'all' && !filters.startDate) || (filters.startDate && preset.days !== 'all')
-                                    ? 'bg-blue-50 border-blue-200 text-blue-700'
-                                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                                    }`}
-                            >
-                                {preset.label}
-                            </button>
-                        ))}
+                        ].map(preset => {
+                            const isActive = () => {
+                                if (preset.days === 'all') return !filters.startDate;
+                                if (!filters.startDate) return false;
+                                const date = new Date();
+                                date.setDate(date.getDate() - preset.days);
+                                const isoDate = date.toISOString().split('T')[0];
+                                return filters.startDate === isoDate;
+                            };
+
+                            return (
+                                <button
+                                    key={preset.label}
+                                    onClick={() => handlePresetClick(preset.days)}
+                                    className={`px-3 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${isActive()
+                                        ? 'bg-blue-50 border-blue-200 text-blue-700'
+                                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                                        }`}
+                                >
+                                    {preset.label}
+                                </button>
+                            );
+                        })}
                     </div>
 
                     {/* Right: Search & Filter */}
@@ -254,27 +272,34 @@ const Dashboard = () => {
 
             {/* Main Content */}
             <div className="space-y-6">
-                {projectMetrics ? (
+                {metricsLoading ? (
+                    <div className="flex items-center justify-center h-64">
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-600"></div>
+                    </div>
+                ) : projectMetrics ? (
                     <>
-                        {/* 4 KPIs Row */}
-                        {/* 4 KPIs Row */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* 5 KPIs Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
                                 <div className="p-3 bg-green-50 rounded-full text-green-600">
                                     <Activity size={24} />
                                 </div>
                                 <div>
-                                    <div className="text-sm text-gray-500">ROI Promedio</div>
-                                    <div className="text-2xl font-bold text-gray-800">{projectMetrics.avg_roi || projectMetrics.roi || 0}%</div>
+                                    <div className="text-sm text-gray-500">{projectMetrics.isPortfolio ? 'ROI Promedio' : 'ROI del Proyecto'}</div>
+                                    <div className="text-2xl font-bold text-gray-800">{projectMetrics.avg_roi}%</div>
                                 </div>
                             </div>
                             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
-                                <div className="p-3 bg-blue-50 rounded-full text-blue-600">
-                                    <CheckCircle size={24} />
+                                <div className={`p-3 rounded-full ${projectMetrics.isPortfolio || projectMetrics.on_time_projects_pct === 100 ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'}`}>
+                                    {projectMetrics.isPortfolio || projectMetrics.on_time_projects_pct === 100 ? <CheckCircle size={24} /> : <Clock size={24} />}
                                 </div>
                                 <div>
-                                    <div className="text-sm text-gray-500">Proyectos a Tiempo</div>
-                                    <div className="text-2xl font-bold text-gray-800">{projectMetrics.on_time_pct || 0}%</div>
+                                    <div className="text-sm text-gray-500">
+                                        {projectMetrics.isPortfolio ? 'Proyectos a Tiempo' : (projectMetrics.on_time_projects_pct === 100 ? 'Proyectos a Tiempo' : 'Retraso del Proyecto')}
+                                    </div>
+                                    <div className={`text-2xl font-bold ${projectMetrics.isPortfolio || projectMetrics.on_time_projects_pct === 100 ? 'text-gray-800' : 'text-orange-600'}`}>
+                                        {projectMetrics.isPortfolio ? `${projectMetrics.on_time_projects_pct}%` : (projectMetrics.on_time_projects_pct === 100 ? '100%' : `${projectMetrics.delay_days || 0} días`)}
+                                    </div>
                                 </div>
                             </div>
                             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
@@ -284,7 +309,10 @@ const Dashboard = () => {
                                 <div>
                                     <div className="text-sm text-gray-500">Costo Real vs Planificado</div>
                                     <div className={`text-2xl font-bold flex items-center gap-1 ${isOverBudget ? 'text-red-600' : 'text-green-600'}`}>
-                                        {costVsPlanVal > 0 ? '+' : ''}{costVsPlanVal}%
+                                        {isOverBudget ? '+' : ''}{Math.abs(costVsPlanVal)}%
+                                    </div>
+                                    <div className={`text-xs font-medium ${isOverBudget ? 'text-red-500' : 'text-green-500'}`}>
+                                        {isOverBudget ? 'Sobrecosto' : 'Ahorro'}
                                     </div>
                                 </div>
                             </div>
@@ -297,77 +325,83 @@ const Dashboard = () => {
                                     <div className="text-2xl font-bold text-gray-800">{projectMetrics.critical_defects || 0}</div>
                                 </div>
                             </div>
+                            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4">
+                                <div className="p-3 bg-purple-50 rounded-full text-purple-600">
+                                    <Users size={24} />
+                                </div>
+                                <div>
+                                    <div className="text-sm text-gray-500">{projectMetrics.isPortfolio ? 'Prom. Empleados' : 'Empleados Asignados'}</div>
+                                    <div className="text-2xl font-bold text-gray-800">{projectMetrics.avg_employees_assigned || projectMetrics.employees_assigned || 0}</div>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Additional Graphical Charts Section */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {/* Defects by Phase Chart */}
-                            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-                                <h3 className="text-lg font-semibold text-gray-800 mb-4">Defectos por Fase SDLC</h3>
-                                <div className="h-64">
+                        {/* Graphical Charts Section */}
+                        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                            {/* Defects by Phase Chart - Extended */}
+                            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 lg:col-span-2">
+                                <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                                    Defectos por Fase <span className="text-sm font-normal text-gray-500 ml-2">(Total: {projectMetrics.total_defects || 0})</span>
+                                </h3>
+                                <div className="h-48">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={Object.entries(projectMetrics.defects_by_phase || {}).map(([name, value]) => ({ name, value }))}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                                            <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-45} textAnchor="end" height={60} />
                                             <YAxis />
-                                            <Tooltip />
+                                            <Tooltip formatter={(value) => value.toLocaleString('en-US', { maximumFractionDigits: 2 })} />
                                             <Bar dataKey="value" fill="#3B82F6" radius={[4, 4, 0, 0]} name="Defectos" />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>
                             </div>
 
-                            {/* Tasks Status Chart */}
-                            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-                                <h3 className="text-lg font-semibold text-gray-800 mb-4">Desempeño de Tareas (Completadas)</h3>
-                                <div className="h-64 flex items-center justify-center">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
+                            {/* Defect Distribution Chart (Always Visible) */}
+                            <div className="h-full">
+                                <QualityDashboard
+                                    projectId={selectedProjectId}
+                                    donutOnly={true}
+                                    providedData={projectMetrics.defects_by_severity}
+                                />
+                            </div>
+
+                            {/* Projects Status Chart (Always Visible) */}
+                            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col">
+                                <h3 className="text-lg font-semibold text-gray-800 mb-2">Estado de Proyectos</h3>
+                                <div className="flex-1 flex flex-col justify-center">
+                                    {/* Bar Chart: Status */}
+                                    <div className="h-48">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart
+                                                layout="vertical"
                                                 data={[
-                                                    { name: 'A Tiempo', value: Math.max(0, (projectMetrics.tasks_completed_pct || 0) - (projectMetrics.tasks_delayed_pct || 0)) },
-                                                    { name: 'Retrasadas', value: projectMetrics.tasks_delayed_pct || 0 }
+                                                    { name: 'Completado', value: projectMetrics.projects_by_status?.['Completado'] || 0 },
+                                                    { name: 'Cancelado', value: projectMetrics.projects_by_status?.['Cancelado'] || 0 }
                                                 ]}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={60}
-                                                outerRadius={80}
-                                                paddingAngle={5}
-                                                dataKey="value"
+                                                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                                             >
-                                                <Cell fill="#10B981" /> {/* Green for On Time */}
-                                                <Cell fill="#EF4444" /> {/* Red for Delayed */}
-                                            </Pie>
-                                            <Tooltip />
-                                            <Legend verticalAlign="bottom" height={36} />
-                                        </PieChart>
-                                    </ResponsiveContainer>
+                                                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                                <XAxis type="number" hide />
+                                                <YAxis dataKey="name" type="category" width={70} tick={{ fontSize: 11 }} />
+                                                <Tooltip formatter={(value) => value.toLocaleString('en-US', { maximumFractionDigits: 2 })} />
+                                                <Bar dataKey="value" radius={[0, 4, 4, 0]} label={{ position: 'right', fill: '#6B7280', fontSize: 12, formatter: (val) => val.toLocaleString('en-US', { maximumFractionDigits: 2 }) }}>
+                                                    {
+                                                        [
+                                                            { name: 'Completado', value: projectMetrics.projects_by_status?.['Completado'] || 0 },
+                                                            { name: 'Cancelado', value: projectMetrics.projects_by_status?.['Cancelado'] || 0 }
+                                                        ].map((entry, index) => (
+                                                            <Cell key={`cell-${index}`} fill={entry.name === 'Completado' ? '#10B981' : '#EF4444'} />
+                                                        ))
+                                                    }
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <ExecutiveSummary metrics={projectMetrics} />
-
-                        {/* Analytical Zone */}
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 h-[350px]">
-                            <RayleighCurves projectData={projectMetrics} compact={true} />
-                            <QualityDashboard projectId={selectedProjectId} donutOnly={true} />
-                        </div>
-
-                        {/* Full Dashboards below if needed, or maybe user only wants the summary? 
-                            User said "Vista general... con 4 KPIs, ExecutiveSummary, RayleighCurves y QualityDashboard en layout de 2 columnas."
-                            It seems they want the compact versions in the summary.
-                            If they want full details, they might need to scroll or click drill-down.
-                            For now, I'll leave it as requested: "Above the fold" focus.
-                            I will add the full components below just in case, or maybe hide them?
-                            The user said "Objetivo final: un Dashboard que... muestre lo más importante...".
-                            I'll stick to the requested layout. If they want full details, they can ask.
-                            Actually, `QualityDashboard` with `donutOnly` hides the rest. 
-                            `RayleighCurves` with `compact` hides the rest.
-                            So I should probably NOT render the full versions unless requested.
-                            However, the user might want to see the full details somewhere.
-                            Given "Vista general", I'll stick to the summary view.
-                        */}
                     </>
                 ) : (
                     <div className="text-center py-20 text-gray-400">Seleccione un proyecto para ver el análisis detallado.</div>

@@ -123,21 +123,15 @@ def get_general_kpis(
     
     tasks_completed_pct = (total_tasks_completed / total_tasks_planned * 100) if total_tasks_planned > 0 else 0
     tasks_delayed_pct = (total_tasks_delayed / total_tasks_planned * 100) if total_tasks_planned > 0 else 0
+    tasks_not_completed_pct = 100 - tasks_completed_pct
 
     # Avg Employees
     total_employees = sum([float(p.empleados_asignados or 0) for p in filtered_projects])
     avg_employees_assigned = total_employees / len(filtered_projects) if filtered_projects else 0
 
     # Productivity (EV / Hours Worked)
-    # EV for portfolio = sum(EV of each project)
-    # EV of project = (completed / planned) * budget
-    total_ev = 0
-    for p in filtered_projects:
-        t_planned = float(p.tareas_planificadas or 1)
-        t_completed = float(p.tareas_completadas or 0)
-        budget = float(p.monto_planificado or 0)
-        progress = t_completed / t_planned if t_planned > 0 else 0
-        total_ev += (budget * progress)
+    # EV for portfolio = sum(ganancia_proyecto of each project)
+    total_ev = sum([float(p.ganancia_proyecto or 0) for p in filtered_projects])
         
     productivity = total_ev / total_hours_real if total_hours_real > 0 else 0
 
@@ -166,8 +160,23 @@ def get_general_kpis(
     for p in filtered_projects:
         st = p.estado.nombre_estado if p.estado else "Unknown"
         status_counts_dict[st] = status_counts_dict.get(st, 0) + 1
+
+    risk_status = "Low"
+    if tasks_delayed_pct > 50 or cost_real_vs_planned_pct > 20:
+        risk_status = "High"
+    elif tasks_delayed_pct > 20 or cost_real_vs_planned_pct > 10:
+        risk_status = "Medium"
+
+    # Defects by Severity
+    defects_severity_query = db.query(FactDefecto.severidad, func.count(FactDefecto.defecto_id))\
+        .join(FactProyecto, FactDefecto.proyecto_id == FactProyecto.proyecto_id)\
+        .filter(FactProyecto.fact_id.in_([p.fact_id for p in filtered_projects]))\
+        .group_by(FactDefecto.severidad).all()
+        
+    defects_by_severity = {s: c for s, c in defects_severity_query}
         
     return {
+        "risk_status": risk_status,
         "total_projects": total_projects,
         "avg_roi": round(avg_roi, 2),
         "total_profit": round(total_profit, 2),
@@ -177,14 +186,18 @@ def get_general_kpis(
         "on_time_projects_pct": round(on_time_projects_pct, 1),
         "critical_defects": critical_defects,
         "total_defects": total_defects,
+        "total_hours_planned": round(total_hours_planned, 1),
+        "total_hours_real": round(total_hours_real, 1),
         "hours_real_vs_planned_pct": round(hours_real_vs_planned_pct, 1),
         "cost_real_vs_planned_pct": round(cost_real_vs_planned_pct, 1),
         "tasks_completed_pct": round(tasks_completed_pct, 1),
         "tasks_delayed_pct": round(tasks_delayed_pct, 1),
+        "tasks_not_completed_pct": round(tasks_not_completed_pct, 1),
         "avg_employees_assigned": round(avg_employees_assigned, 1),
         "productivity": round(productivity, 2),
         "projects_by_status": status_counts_dict,
-        "defects_by_phase": defects_by_phase
+        "defects_by_phase": defects_by_phase,
+        "defects_by_severity": defects_by_severity
     }
 
 @router.get("/projects/{project_id}/metrics")
@@ -192,32 +205,44 @@ def get_project_metrics(project_id: int, db: Session = Depends(get_db)):
     """
     Get specific metrics for a project: SPI, CPI, Risk, etc.
     """
-    proj = db.query(FactProyecto).filter(FactProyecto.proyecto_id == project_id).first()
-    if not proj:
+    # Alias DimTiempo for plan and real dates
+    TiempoPlan = aliased(DimTiempo)
+    TiempoReal = aliased(DimTiempo)
+
+    proj_query = db.query(FactProyecto, TiempoPlan.fecha.label("fecha_plan"), TiempoReal.label("fecha_real"))\
+        .outerjoin(TiempoPlan, FactProyecto.fecha_fin_plan == TiempoPlan.tiempo_id)\
+        .outerjoin(TiempoReal, FactProyecto.fecha_fin_real == TiempoReal.tiempo_id)\
+        .filter(FactProyecto.proyecto_id == project_id)
+        
+    result = proj_query.first()
+    
+    if not result:
         raise HTTPException(status_code=404, detail="Project not found")
         
-    # Calculations
-    # EV (Earned Value) approx = % Tasks Completed * Budget
-    # This is a simplification. Ideally EV is sum of budget of completed tasks.
-    # We'll use: (tareas_completadas / tareas_planificadas) * monto_planificado
+    proj, fecha_plan, fecha_real = result
     
+    # Calculations
     total_tasks = float(proj.tareas_planificadas or 1)
     completed_tasks = float(proj.tareas_completadas or 0)
     progress_pct = completed_tasks / total_tasks if total_tasks > 0 else 0
     
     pv = float(proj.monto_planificado or 0) # Planned Value (Budget)
     ac = float(proj.monto_real or 0)        # Actual Cost
-    ev = pv * progress_pct                  # Earned Value
     
-    spi = ev / pv if pv > 0 else 0 # Schedule Performance Index
-    cpi = ev / ac if ac > 0 else 0 # Cost Performance Index
+    # EV = ganancia_proyecto
+    ev = float(proj.ganancia_proyecto or 0)
+    
+    # SPI = EV / PV
+    spi = ev / pv if pv > 0 else 0
+    
+    # CPI = EV / AC
+    cpi = ev / ac if ac > 0 else 0
     
     # Risk Assessment
-    # High Risk if SPI < 0.8 or CPI < 0.8
     risk_score = 0
     if spi < 0.8: risk_score += 1
     if cpi < 0.8: risk_score += 1
-    
+
     retrasadas = float(proj.tareas_retrasadas or 0)
     if retrasadas > (total_tasks * 0.1): risk_score += 1
     
@@ -226,8 +251,40 @@ def get_project_metrics(project_id: int, db: Session = Depends(get_db)):
     elif risk_score >= 2: risk_status = "High"
     
     horas_trabajadas = float(proj.horas_trabajadas or 1)
+    horas_planificadas = float(proj.horas_planificadas or 1)
     productivity = ev / horas_trabajadas if horas_trabajadas > 0 else 0
     
+    # Defects by Phase
+    defects_phase_query = db.query(DimFaseSDLC.nombre_fase, func.count(FactDefecto.defecto_id))\
+        .join(FactDefecto, FactDefecto.fase_id == DimFaseSDLC.fase_sdlc_id)\
+        .filter(FactDefecto.proyecto_id == project_id)\
+        .group_by(DimFaseSDLC.nombre_fase).all()
+    
+    defects_by_phase = {p: c for p, c in defects_phase_query}
+    total_defects = sum(defects_by_phase.values())
+
+    # Task Percentages
+    tasks_completed_pct = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+    tasks_delayed_pct = (retrasadas / total_tasks * 100) if total_tasks > 0 else 0
+    tasks_not_completed_pct = 100 - tasks_completed_pct
+    
+    # On Time Status & Delay Calculation
+    is_on_time = 0
+    delay_days = 0
+    
+    # Check dates from joined DimTiempo
+    # fecha_plan and fecha_real are Date objects or None
+    if fecha_real and fecha_plan:
+        if fecha_real <= fecha_plan:
+            is_on_time = 100
+        else:
+            # Calculate delay in days
+            delta = fecha_real - fecha_plan
+            delay_days = delta.days
+
+    # Project Status for Chart
+    status_counts_dict = {proj.estado.nombre_estado: 1} if proj.estado else {"Unknown": 1}
+
     return {
         "project_id": project_id,
         "name": proj.nombre,
@@ -238,7 +295,20 @@ def get_project_metrics(project_id: int, db: Session = Depends(get_db)):
         "ac": round(ac, 2),
         "risk_status": risk_status,
         "progress_pct": round(progress_pct * 100, 1),
-        "productivity": round(productivity, 2) # Value per hour
+        "productivity": round(productivity, 2),
+        "defects_by_phase": defects_by_phase,
+        "total_defects": total_defects,
+        "tasks_completed_pct": round(tasks_completed_pct, 1),
+        "tasks_delayed_pct": round(tasks_delayed_pct, 1),
+        "tasks_not_completed_pct": round(tasks_not_completed_pct, 1),
+        "cost_real_vs_planned_pct": round(((ac - pv) / pv * 100), 1) if pv > 0 else 0,
+        "avg_roi": round(proj.roi or 0, 2),
+        "on_time_projects_pct": is_on_time,
+        "delay_days": delay_days,
+        "employees_assigned": proj.empleados_asignados or 0,
+        "horas_planificadas": round(horas_planificadas, 1),
+        "horas_reales": round(horas_trabajadas, 1),
+        "projects_by_status": status_counts_dict
     }
 
 @router.get("/projects")

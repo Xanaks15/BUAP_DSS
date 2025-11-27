@@ -74,7 +74,7 @@ const Layout = ({ children }) => {
             </header>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-auto">
+            <main className="flex-1">
                 <div className="w-full py-8 px-4 sm:px-6 lg:px-8">
                     {children}
                 </div>

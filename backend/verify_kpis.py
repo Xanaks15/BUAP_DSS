@@ -9,6 +9,9 @@ try:
             print("Productivity:", data.get("productivity"))
             print("Defects by Phase:", data.get("defects_by_phase"))
             print("Tasks Completed %:", data.get("tasks_completed_pct"))
+            print("Tasks Delayed %:", data.get("tasks_delayed_pct"))
+            print("Total AC:", data.get("total_ac"))
+            print("Total PV:", data.get("total_pv"))
         else:
             print("Error:", response.status)
 except Exception as e:
