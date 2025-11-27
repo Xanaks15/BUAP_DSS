@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, ReferenceLine } from 'recharts';
 import { Calculator, Play } from 'lucide-react';
 
 const RayleighModel = () => {
@@ -74,139 +74,138 @@ const RayleighModel = () => {
                 <p className="text-gray-500">Estimación de defectos y distribución temporal</p>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Input Form */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
-                    <div className="flex items-center space-x-2 mb-6 text-corporate-blue">
-                        <Calculator size={24} />
-                        <h3 className="text-lg font-bold">Parámetros del Proyecto</h3>
-                    </div>
-
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Horas Estimadas</label>
-                            <input
-                                type="number"
-                                value={inputs.horasEstimadas}
-                                onChange={(e) => setInputs({ ...inputs, horasEstimadas: Number(e.target.value) })}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Duración (Semanas)</label>
-                            <input
-                                type="number"
-                                value={inputs.duracionSemanas}
-                                onChange={(e) => setInputs({ ...inputs, duracionSemanas: Number(e.target.value) })}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Complejidad</label>
-                            <select
-                                value={inputs.complejidad}
-                                onChange={(e) => setInputs({ ...inputs, complejidad: e.target.value })}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                            >
-                                <option value="baja">Baja</option>
-                                <option value="media">Media</option>
-                                <option value="alta">Alta</option>
-                            </select>
-                        </div>
-
-                        <button
-                            onClick={calculateRayleigh}
-                            className="w-full bg-corporate-blue text-white py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 mt-4"
-                        >
-                            <Play size={18} />
-                            <span>Ejecutar Modelo</span>
-                        </button>
-                    </div>
+            {/* Input Form - Moved to Top */}
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                <div className="flex items-center space-x-2 mb-4 text-corporate-blue border-b pb-2">
+                    <Calculator size={20} />
+                    <h3 className="text-lg font-bold">Parámetros del Proyecto</h3>
                 </div>
 
-                {/* Results */}
-                <div className="lg:col-span-2 space-y-6">
-                    {results ? (
-                        <>
-                            {/* Top Row: Stats & Pie Chart */}
-                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                                {/* Stats Cards (2/3 width) */}
-                                <div className="xl:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 h-fit">
-                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center">
-                                        <div className="text-sm text-gray-500">Defectos Totales (Est.)</div>
-                                        <div className="text-2xl font-bold text-blue-600">{results.totalDefects}</div>
-                                    </div>
-                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center">
-                                        <div className="text-sm text-gray-500">Semana Pico (t_peak)</div>
-                                        <div className="text-2xl font-bold text-purple-600">{results.tPeak}</div>
-                                    </div>
-                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center">
-                                        <div className="text-sm text-gray-500">Sigma (σ)</div>
-                                        <div className="text-2xl font-bold text-orange-600">{results.sigma}</div>
-                                    </div>
-                                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Horas Estimadas</label>
+                        <input
+                            type="number"
+                            value={inputs.horasEstimadas}
+                            onChange={(e) => setInputs({ ...inputs, horasEstimadas: Number(e.target.value) })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Duración (Semanas)</label>
+                        <input
+                            type="number"
+                            value={inputs.duracionSemanas}
+                            onChange={(e) => setInputs({ ...inputs, duracionSemanas: Number(e.target.value) })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Complejidad</label>
+                        <select
+                            value={inputs.complejidad}
+                            onChange={(e) => setInputs({ ...inputs, complejidad: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                        >
+                            <option value="baja">Baja</option>
+                            <option value="media">Media</option>
+                            <option value="alta">Alta</option>
+                        </select>
+                    </div>
 
-                                {/* Phase Distribution (Where?) - Top Right (1/3 width) */}
-                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center">
-                                    <h3 className="text-sm font-bold mb-2 text-gray-800 w-full text-left">Distribución (Dónde)</h3>
-                                    <div className="h-32 w-full flex items-center justify-center">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={phaseDistribution}
-                                                    cx="50%"
-                                                    cy="50%"
-                                                    innerRadius={30}
-                                                    outerRadius={50}
-                                                    paddingAngle={5}
-                                                    dataKey="value"
-                                                >
-                                                    {phaseDistribution.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                    <div className="flex flex-wrap justify-center gap-2 mt-2 text-xs text-gray-500">
-                                        {phaseDistribution.map((entry, index) => (
-                                            <div key={index} className="flex items-center space-x-1">
-                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }}></div>
-                                                <span>{entry.name}</span>
-                                            </div>
-                                        ))}
-                                    </div>
+                    <button
+                        onClick={calculateRayleigh}
+                        className="w-full bg-corporate-blue text-white py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+                    >
+                        <Play size={18} />
+                        <span>Ejecutar Modelo</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* Results */}
+            <div className="space-y-6">
+                {results ? (
+                    <>
+                        {/* Top Row: Stats & Pie Chart */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Stats Cards (2/3 width) */}
+                            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 h-full">
+                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center items-center text-center">
+                                    <div className="text-sm text-gray-500 mb-1">Defectos Totales (Est.)</div>
+                                    <div className="text-3xl font-bold text-blue-600">{results.totalDefects}</div>
+                                </div>
+                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center items-center text-center">
+                                    <div className="text-sm text-gray-500 mb-1">Semana Pico (t_peak)</div>
+                                    <div className="text-3xl font-bold text-purple-600">{results.tPeak}</div>
+                                </div>
+                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center items-center text-center">
+                                    <div className="text-sm text-gray-500 mb-1">Sigma (σ)</div>
+                                    <div className="text-3xl font-bold text-orange-600">{results.sigma}</div>
                                 </div>
                             </div>
 
-                            {/* Bottom Row: Rayleigh Curve (Full Width) */}
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                                <h3 className="text-lg font-bold mb-4 text-gray-800">Curva de Descubrimiento de Defectos (Cuándo)</h3>
-                                <div className="h-80">
+                            {/* Phase Distribution (Where?) - Top Right (1/3 width) */}
+                            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+                                <h3 className="text-sm font-bold mb-2 text-gray-800 w-full text-center">Distribución de Defectos</h3>
+                                <div className="h-40 w-full flex items-center justify-center">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={results.data}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                            <XAxis dataKey="semana" label={{ value: 'Semanas', position: 'insideBottom', offset: -5 }} />
-                                            <YAxis />
-                                            <Tooltip
-                                                contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                            />
-                                            <Legend />
-                                            <Line type="monotone" dataKey="defectos" name="Defectos por Semana" stroke="#2563eb" strokeWidth={2} dot={{ r: 4 }} />
-                                            <Line type="monotone" dataKey="acumulado" name="Defectos Acumulados" stroke="#9333ea" strokeWidth={2} strokeDasharray="5 5" dot={false} />
-                                        </LineChart>
+                                        <PieChart>
+                                            <Pie
+                                                data={phaseDistribution}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={40}
+                                                outerRadius={60}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                            >
+                                                {phaseDistribution.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip />
+                                        </PieChart>
                                     </ResponsiveContainer>
                                 </div>
+                                <div className="flex flex-wrap justify-center gap-3 mt-2 text-xs text-gray-500">
+                                    {phaseDistribution.map((entry, index) => (
+                                        <div key={index} className="flex items-center space-x-1">
+                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }}></div>
+                                            <span>{entry.name}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        </>
-                    ) : (
-                        <div className="h-full flex flex-col items-center justify-center bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 text-gray-400">
-                            <Calculator size={48} className="mb-4 opacity-50" />
-                            <p>Ingrese los parámetros y ejecute el modelo para ver los resultados.</p>
                         </div>
-                    )}
-                </div>
+
+                        {/* Bottom Row: Rayleigh Curve (Full Width) */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                            <h3 className="text-lg font-bold mb-4 text-gray-800">Curva de Descubrimiento de Defectos (Cuándo)</h3>
+                            <div className="h-96">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={results.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="semana" type="number" domain={['dataMin', 'dataMax']} label={{ value: 'Semanas', position: 'insideBottom', offset: -5 }} />
+                                        <YAxis />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        />
+                                        <Legend verticalAlign="top" height={36} />
+                                        <ReferenceLine x={Number(results.sigma)} stroke="#ea580c" strokeDasharray="3 3" label={{ value: `σ: ${results.sigma}`, position: 'top', fill: '#ea580c' }} />
+                                        <Line type="monotone" dataKey="defectos" name="Defectos por Semana" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                                        <Line type="monotone" dataKey="acumulado" name="Defectos Acumulados" stroke="#9333ea" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <div className="h-64 flex flex-col items-center justify-center bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 text-gray-400">
+                        <Calculator size={48} className="mb-4 opacity-50" />
+                        <p>Ingrese los parámetros arriba y ejecute el modelo para ver los resultados.</p>
+                    </div>
+                )}
             </div>
         </div>
     );
