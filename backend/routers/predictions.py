@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from pydantic import BaseModel
 from typing import List, Optional
-from ..prediction_model import model
+from prediction_model import model
 
 router = APIRouter(
     prefix="/predictions",

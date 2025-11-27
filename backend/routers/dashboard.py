@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Dict, Any
-from ..database import get_db
-from ..models import FactProyecto, DimEstado, DimTipoProyecto, DimCliente, FactDefecto, DimTipoDefecto, DimFaseSDLC
+from database import get_db
+from models import FactProyecto, DimEstado, DimTipoProyecto, DimCliente, FactDefecto, DimTipoDefecto, DimFaseSDLC, DimTiempo
 
 router = APIRouter(
     prefix="/dashboard",
@@ -102,29 +102,43 @@ def get_project_quality(project_id: int, db: Session = Depends(get_db)):
     """
     Get quality metrics: Defects by severity, phase, density.
     """
-    # Defects by Severity
-    defects_severity = db.query(FactDefecto.severidad, func.count(FactDefecto.fact_defecto_id))\
-        .filter(FactDefecto.proyecto_id == project_id)\
-        .group_by(FactDefecto.severidad).all()
+    try:
+        # Defects by Severity
+        defects_severity = db.query(FactDefecto.severidad, func.count(FactDefecto.defecto_id))\
+            .filter(FactDefecto.proyecto_id == project_id)\
+            .group_by(FactDefecto.severidad).all()
+            
+        # Defects by Phase
+        defects_phase = db.query(DimFaseSDLC.nombre_fase, func.count(FactDefecto.defecto_id))\
+            .join(FactDefecto, FactDefecto.fase_id == DimFaseSDLC.fase_sdlc_id)\
+            .filter(FactDefecto.proyecto_id == project_id)\
+            .group_by(DimFaseSDLC.nombre_fase).all()
+            
+        # Total Defects
+        total_defects = sum([c for _, c in defects_severity])
         
-    # Defects by Phase
-    defects_phase = db.query(DimFaseSDLC.nombre_fase, func.count(FactDefecto.fact_defecto_id))\
-        .join(FactDefecto, FactDefecto.fase_id == DimFaseSDLC.fase_sdlc_id)\
-        .filter(FactDefecto.proyecto_id == project_id)\
-        .group_by(DimFaseSDLC.nombre_fase).all()
+        # Defect Density (Defects / KLOC or Defects / Function Points)
+        # We don't have size metrics, so we'll use Defects / 100 Hours as proxy
+        proj = db.query(FactProyecto).filter(FactProyecto.proyecto_id == project_id).first()
+        hours = proj.horas_trabajadas or 1
+        density = (total_defects / hours) * 100
         
-    # Total Defects
-    total_defects = sum([c for _, c in defects_severity])
-    
-    # Defect Density (Defects / KLOC or Defects / Function Points)
-    # We don't have size metrics, so we'll use Defects / 100 Hours as proxy
-    proj = db.query(FactProyecto).filter(FactProyecto.proyecto_id == project_id).first()
-    hours = proj.horas_trabajadas or 1
-    density = (total_defects / hours) * 100
-    
-    return {
-        "total_defects": total_defects,
-        "defect_density_per_100h": round(density, 2),
-        "by_severity": {s: c for s, c in defects_severity},
-        "by_phase": {p: c for p, c in defects_phase}
-    }
+        # Defects by Week (for Rayleigh Curve)
+        # Assuming DimTiempo has 'fecha'
+        
+        defects_by_week = db.query(func.week(DimTiempo.fecha), func.count(FactDefecto.defecto_id))\
+            .join(FactDefecto, FactDefecto.tiempo_id == DimTiempo.tiempo_id)\
+            .filter(FactDefecto.proyecto_id == project_id)\
+            .group_by(func.week(DimTiempo.fecha))\
+            .order_by(func.week(DimTiempo.fecha)).all()
+
+        return {
+            "total_defects": total_defects,
+            "defect_density_per_100h": round(density, 2),
+            "by_severity": {s: c for s, c in defects_severity},
+            "by_phase": {p: c for p, c in defects_phase},
+            "by_week": [{"week": w, "count": c} for w, c in defects_by_week]
+        }
+    except Exception as e:
+        print(f"ERROR IN GET_PROJECT_QUALITY: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

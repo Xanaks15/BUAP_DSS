@@ -15,11 +15,11 @@ const ExecutiveSummary = ({ metrics }) => {
     // Mock S-Curve Data (since we don't have historical time-series for single project in this endpoint yet)
     // In a real app, we'd fetch historical EV/PV/AC
     const sCurveData = [
-        { name: 'Start', pv: 0, ev: 0, ac: 0 },
+        { name: 'Inicio', pv: 0, ev: 0, ac: 0 },
         { name: '25%', pv: pv * 0.25, ev: ev * 0.2, ac: ac * 0.25 },
         { name: '50%', pv: pv * 0.50, ev: ev * 0.45, ac: ac * 0.55 },
         { name: '75%', pv: pv * 0.75, ev: ev * 0.7, ac: ac * 0.8 },
-        { name: 'Now', pv: pv, ev: ev, ac: ac },
+        { name: 'Actual', pv: pv, ev: ev, ac: ac },
     ];
 
     return (
@@ -28,9 +28,9 @@ const ExecutiveSummary = ({ metrics }) => {
 
             {/* KPI Widgets Carousel */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <KPIWidget title="SPI (Schedule)" value={spi} type="gauge" color={spiColor} />
-                <KPIWidget title="CPI (Cost)" value={cpi} type="gauge" color={cpiColor} />
-                <KPIWidget title="Productivity ($/hr)" value={`$${productivity}`} />
+                <KPIWidget title="SPI (Cronograma)" value={spi} type="gauge" color={spiColor} />
+                <KPIWidget title="CPI (Costo)" value={cpi} type="gauge" color={cpiColor} />
+                <KPIWidget title="Productividad ($/hr)" value={`$${productivity}`} />
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col items-center justify-center">
                     <h3 className="text-gray-500 text-sm font-medium mb-2 uppercase tracking-wide">Riesgo</h3>
                     <div className={`text-2xl font-bold px-4 py-1 rounded-full text-white`} style={{ backgroundColor: riskColor }}>
@@ -50,9 +50,9 @@ const ExecutiveSummary = ({ metrics }) => {
                             <YAxis />
                             <Tooltip />
                             <Legend />
-                            <Line type="monotone" dataKey="pv" stroke="#0074C8" name="Planned Value (PV)" strokeWidth={2} />
-                            <Line type="monotone" dataKey="ev" stroke="#00A65A" name="Earned Value (EV)" strokeWidth={2} />
-                            <Line type="monotone" dataKey="ac" stroke="#C80000" name="Actual Cost (AC)" strokeWidth={2} />
+                            <Line type="monotone" dataKey="pv" stroke="#0074C8" name="Valor Planificado (PV)" strokeWidth={2} />
+                            <Line type="monotone" dataKey="ev" stroke="#00A65A" name="Valor Ganado (EV)" strokeWidth={2} />
+                            <Line type="monotone" dataKey="ac" stroke="#C80000" name="Costo Real (AC)" strokeWidth={2} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>

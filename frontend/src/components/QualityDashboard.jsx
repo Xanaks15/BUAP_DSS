@@ -4,14 +4,24 @@ import { getProjectQuality } from '../services/api';
 
 const QualityDashboard = ({ projectId }) => {
     const [qualityData, setQualityData] = useState(null);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         if (projectId) {
-            getProjectQuality(projectId).then(setQualityData).catch(console.error);
+            setQualityData(null);
+            setError(null);
+            getProjectQuality(projectId)
+                .then(setQualityData)
+                .catch(err => {
+                    console.error(err);
+                    setError("Error cargando métricas: " + (err.response?.data?.detail || err.message));
+                });
         }
     }, [projectId]);
 
-    if (!qualityData) return <div>Loading Quality Metrics...</div>;
+    if (!projectId) return <div className="text-center text-gray-400 mt-8">Seleccione un proyecto para ver métricas de calidad (Drill-down).</div>;
+    if (error) return <div className="text-center text-red-500 mt-8">{error}</div>;
+    if (!qualityData) return <div>Cargando Métricas de Calidad...</div>;
 
     const severityData = Object.entries(qualityData.by_severity).map(([name, value]) => ({ name, value }));
     const phaseData = Object.entries(qualityData.by_phase).map(([name, value]) => ({ name, value }));
@@ -29,7 +39,7 @@ const QualityDashboard = ({ projectId }) => {
                     <div className="text-3xl font-bold text-corporate-blue">{qualityData.total_defects}</div>
                 </div>
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 text-center">
-                    <div className="text-gray-500 text-sm uppercase">Defect Density</div>
+                    <div className="text-gray-500 text-sm uppercase">Densidad de Defectos</div>
                     <div className="text-3xl font-bold text-corporate-blue">{qualityData.defect_density_per_100h} <span className="text-sm text-gray-400">/100h</span></div>
                 </div>
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 text-center">

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, DECIMAL
 from sqlalchemy.orm import relationship
-from .database import Base
+from database import Base
 
 class FactProyecto(Base):
     __tablename__ = "fact_proyecto"
@@ -61,15 +61,12 @@ class DimTiempo(Base):
 
 class FactDefecto(Base):
     __tablename__ = "fact_defecto"
-    fact_defecto_id = Column(Integer, primary_key=True) # Assuming auto-generated or composite
-    # In schema it's composite (proyecto_id, tipo_defecto_id, fase_id, tiempo_id)
-    # But SQLAlchemy needs a PK. Let's assume we can use composite PK or just map it.
-    # For simplicity, let's map the columns.
+    defecto_id = Column(Integer, primary_key=True) # Found in DB inspection
     
-    proyecto_id = Column(Integer, ForeignKey("fact_proyecto.proyecto_id"), primary_key=True)
-    tipo_defecto_id = Column(Integer, ForeignKey("dim_tipo_defecto.tipo_defecto_id"), primary_key=True)
-    fase_id = Column(Integer, ForeignKey("dim_fase_sdlc.fase_sdlc_id"), primary_key=True)
-    tiempo_id = Column(Integer, ForeignKey("dim_tiempo.tiempo_id"), primary_key=True)
+    proyecto_id = Column(Integer, ForeignKey("fact_proyecto.proyecto_id"))
+    tipo_defecto_id = Column(Integer, ForeignKey("dim_tipo_defecto.tipo_defecto_id"))
+    fase_id = Column("fase_sdlc_id", Integer, ForeignKey("dim_fase_sdlc.fase_sdlc_id")) # Map 'fase_id' attr to 'fase_sdlc_id' col
+    tiempo_id = Column(Integer, ForeignKey("dim_tiempo.tiempo_id"))
     severidad = Column(String(50))
 
 class DimTipoDefecto(Base):

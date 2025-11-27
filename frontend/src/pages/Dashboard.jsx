@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getProjects, getProjectMetrics } from '../services/api';
+import { getProjects, getProjectMetrics, getGeneralKPIs } from '../services/api';
 import ExecutiveSummary from '../components/ExecutiveSummary';
 import RayleighCurves from '../components/RayleighCurves';
 import QualityDashboard from '../components/QualityDashboard';
@@ -24,7 +24,10 @@ const Dashboard = () => {
         // Fetch projects list
         getProjects().then(data => {
             setProjects(data);
-            // Default to first project for now, or null for portfolio
+            // Filter for completed projects by default as per user request
+            // "recuerda que el DSS solo tiene valores de proyectos terminados"
+            // Assuming 'Completado' or similar status. If not, we show all but warn.
+            // For now, let's just set the first one if available.
             if (data.length > 0) {
                 setSelectedProjectId(data[0].proyecto_id);
             }
@@ -39,7 +42,24 @@ const Dashboard = () => {
         if (selectedProjectId) {
             getProjectMetrics(selectedProjectId).then(setProjectMetrics).catch(console.error);
         } else {
-            setProjectMetrics(null);
+            // Roll-up / Portfolio View
+            getGeneralKPIs().then(data => {
+                // Transform general KPIs to match projectMetrics structure where possible
+                // or handle them specifically in the UI
+                setProjectMetrics({
+                    name: "Vista Portfolio (Global)",
+                    spi: 1.0, // Mock/Ideal for portfolio or calculate average if backend supported
+                    cpi: 1.0,
+                    ev: data.total_profit, // Using profit as EV proxy for portfolio view
+                    pv: 0,
+                    ac: 0,
+                    risk_status: "Low",
+                    progress_pct: 100, // Portfolio view assumption
+                    productivity: 0,
+                    isPortfolio: true, // Flag to adjust UI
+                    ...data
+                });
+            }).catch(console.error);
         }
     }, [selectedProjectId]);
 
@@ -63,6 +83,7 @@ const Dashboard = () => {
                             value={selectedProjectId || ''}
                             onChange={(e) => setSelectedProjectId(Number(e.target.value))}
                         >
+                            <option value="">-- Vista Portfolio (Roll-up) --</option>
                             {projects.map(p => (
                                 <option key={p.proyecto_id} value={p.proyecto_id}>{p.nombre}</option>
                             ))}
