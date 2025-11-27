@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Calculator, Play } from 'lucide-react';
 
 const RayleighModel = () => {
@@ -11,6 +11,7 @@ const RayleighModel = () => {
     });
 
     const [results, setResults] = useState(null);
+    const [phaseDistribution, setPhaseDistribution] = useState([]);
 
     const calculateRayleigh = () => {
         const { horasEstimadas, duracionSemanas } = inputs;
@@ -21,8 +22,13 @@ const RayleighModel = () => {
         // 2. Calculate Peak Time
         const tPeak = sigma * Math.sqrt(2);
 
-        // 3. Estimate Total Defects (Calibration: 0.05 defects per hour approx)
-        const defectsPerHour = 0.05;
+        // 3. Estimate Total Defects (Calibration based on complexity)
+        const defectRates = {
+            baja: 0.03,
+            media: 0.05,
+            alta: 0.08
+        };
+        const defectsPerHour = defectRates[inputs.complejidad] || 0.05;
         const totalDefects = defectsPerHour * horasEstimadas;
 
         // 4. Generate Curve Points
@@ -44,12 +50,21 @@ const RayleighModel = () => {
             });
         }
 
+        // 5. Calculate Phase Distribution (Where?)
+        const phases = [
+            { name: 'Requisitos', value: Math.round(totalDefects * 0.15), color: '#3B82F6' },
+            { name: 'Diseño', value: Math.round(totalDefects * 0.25), color: '#8B5CF6' },
+            { name: 'Codificación', value: Math.round(totalDefects * 0.40), color: '#EF4444' },
+            { name: 'Pruebas', value: Math.round(totalDefects * 0.20), color: '#10B981' }
+        ];
+
         setResults({
             sigma: sigma.toFixed(2),
             tPeak: tPeak.toFixed(2),
             totalDefects: Math.round(totalDefects),
             data
         });
+        setPhaseDistribution(phases);
     };
 
     return (
@@ -113,25 +128,61 @@ const RayleighModel = () => {
                 <div className="lg:col-span-2 space-y-6">
                     {results ? (
                         <>
-                            {/* Stats Cards */}
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                                    <div className="text-sm text-gray-500">Defectos Totales (Est.)</div>
-                                    <div className="text-2xl font-bold text-blue-600">{results.totalDefects}</div>
+                            {/* Top Row: Stats & Pie Chart */}
+                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                                {/* Stats Cards (2/3 width) */}
+                                <div className="xl:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 h-fit">
+                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center">
+                                        <div className="text-sm text-gray-500">Defectos Totales (Est.)</div>
+                                        <div className="text-2xl font-bold text-blue-600">{results.totalDefects}</div>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center">
+                                        <div className="text-sm text-gray-500">Semana Pico (t_peak)</div>
+                                        <div className="text-2xl font-bold text-purple-600">{results.tPeak}</div>
+                                    </div>
+                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center">
+                                        <div className="text-sm text-gray-500">Sigma (σ)</div>
+                                        <div className="text-2xl font-bold text-orange-600">{results.sigma}</div>
+                                    </div>
                                 </div>
-                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                                    <div className="text-sm text-gray-500">Semana Pico (t_peak)</div>
-                                    <div className="text-2xl font-bold text-purple-600">{results.tPeak}</div>
-                                </div>
-                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                                    <div className="text-sm text-gray-500">Sigma (σ)</div>
-                                    <div className="text-2xl font-bold text-orange-600">{results.sigma}</div>
+
+                                {/* Phase Distribution (Where?) - Top Right (1/3 width) */}
+                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+                                    <h3 className="text-sm font-bold mb-2 text-gray-800 w-full text-left">Distribución (Dónde)</h3>
+                                    <div className="h-32 w-full flex items-center justify-center">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={phaseDistribution}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={30}
+                                                    outerRadius={50}
+                                                    paddingAngle={5}
+                                                    dataKey="value"
+                                                >
+                                                    {phaseDistribution.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    <div className="flex flex-wrap justify-center gap-2 mt-2 text-xs text-gray-500">
+                                        {phaseDistribution.map((entry, index) => (
+                                            <div key={index} className="flex items-center space-x-1">
+                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }}></div>
+                                                <span>{entry.name}</span>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Chart */}
+                            {/* Bottom Row: Rayleigh Curve (Full Width) */}
                             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                                <h3 className="text-lg font-bold mb-4 text-gray-800">Curva de Descubrimiento de Defectos</h3>
+                                <h3 className="text-lg font-bold mb-4 text-gray-800">Curva de Descubrimiento de Defectos (Cuándo)</h3>
                                 <div className="h-80">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={results.data}>

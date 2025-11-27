@@ -3,13 +3,16 @@ import { getProjects, getProjectMetrics, getGeneralKPIs } from '../services/api'
 import ExecutiveSummary from '../components/ExecutiveSummary';
 import RayleighCurves from '../components/RayleighCurves';
 import QualityDashboard from '../components/QualityDashboard';
-import { Filter, Calendar, Users, Briefcase } from 'lucide-react';
+import FilterPanel from '../components/FilterPanel';
+import { Filter, Calendar, Users, Briefcase, Search, LayoutGrid, List } from 'lucide-react';
 
 const Dashboard = () => {
     const [projects, setProjects] = useState([]);
     const [selectedProjectId, setSelectedProjectId] = useState(null); // Null means "All Projects" / Portfolio View
+    const [viewMode, setViewMode] = useState('portfolio'); // 'portfolio' | 'project'
     const [projectMetrics, setProjectMetrics] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     // Filters state
     const [filters, setFilters] = useState({
@@ -17,20 +20,17 @@ const Dashboard = () => {
         endDate: '',
         type: 'all',
         status: 'all',
-        client: 'all'
+        client: 'all',
+        query: ''
     });
 
     useEffect(() => {
         // Fetch projects list
         getProjects().then(data => {
             setProjects(data);
-            // Filter for completed projects by default as per user request
-            // "recuerda que el DSS solo tiene valores de proyectos terminados"
-            // Assuming 'Completado' or similar status. If not, we show all but warn.
-            // For now, let's just set the first one if available.
-            if (data.length > 0) {
-                setSelectedProjectId(data[0].proyecto_id);
-            }
+            // Default to Portfolio view initially, or select first project if user prefers
+            // User requested: "si elijo Portafolio, selectedProjectId=null; si Proyecto, mantener el seleccionado"
+            // We'll start in Portfolio mode.
             setLoading(false);
         }).catch(err => {
             console.error("Error fetching projects:", err);
@@ -38,106 +38,184 @@ const Dashboard = () => {
         });
     }, []);
 
+    // Sync viewMode with selectedProjectId
+    useEffect(() => {
+        if (viewMode === 'portfolio') {
+            setSelectedProjectId(null);
+        } else if (viewMode === 'project' && !selectedProjectId && projects.length > 0) {
+            setSelectedProjectId(projects[0].proyecto_id);
+        }
+    }, [viewMode, projects]);
+
     useEffect(() => {
         if (selectedProjectId) {
             getProjectMetrics(selectedProjectId).then(setProjectMetrics).catch(console.error);
         } else {
-            // Roll-up / Portfolio View
-            getGeneralKPIs().then(data => {
-                // Transform general KPIs to match projectMetrics structure where possible
-                // or handle them specifically in the UI
+            // Roll-up / Portfolio View with Slice & Dice Filters
+            getGeneralKPIs(filters).then(data => {
                 setProjectMetrics({
                     name: "Vista Portfolio (Global)",
-                    spi: 1.0, // Mock/Ideal for portfolio or calculate average if backend supported
+                    spi: 1.0,
                     cpi: 1.0,
-                    ev: data.total_profit, // Using profit as EV proxy for portfolio view
-                    pv: 0,
-                    ac: 0,
+                    ev: data.total_profit,
+                    pv: data.total_pv || 0,
+                    ac: data.total_ac || 0,
                     risk_status: "Low",
-                    progress_pct: 100, // Portfolio view assumption
+                    progress_pct: 100,
                     productivity: 0,
-                    isPortfolio: true, // Flag to adjust UI
+                    isPortfolio: true,
                     ...data
                 });
             }).catch(console.error);
         }
-    }, [selectedProjectId]);
+    }, [selectedProjectId, filters]);
+
+    // Handlers
+    const handlePresetClick = (days) => {
+        if (days === 'all') {
+            setFilters(prev => ({ ...prev, startDate: '', endDate: '' }));
+        } else {
+            const date = new Date();
+            date.setDate(date.getDate() - days);
+            // Format YYYY-MM-DD
+            const isoDate = date.toISOString().split('T')[0];
+            setFilters(prev => ({ ...prev, startDate: isoDate, endDate: '' }));
+        }
+    };
+
+    const handleApplyFilters = (newFilters) => {
+        setFilters(prev => ({ ...prev, ...newFilters }));
+        setIsFilterOpen(false);
+    };
+
+    const handleClearFilters = () => {
+        setFilters({
+            startDate: '',
+            endDate: '',
+            type: 'all',
+            status: 'all',
+            client: 'all',
+            query: ''
+        });
+        setIsFilterOpen(false);
+    };
+
+    const activeFiltersCount = [
+        filters.type !== 'all',
+        filters.status !== 'all',
+        filters.client !== 'all',
+        filters.startDate !== '',
+        filters.endDate !== ''
+    ].filter(Boolean).length;
 
     if (loading) return <div className="flex items-center justify-center h-full text-corporate-blue">Cargando DSS...</div>;
 
     return (
-        <div className="space-y-8 font-sans text-gray-800">
-            {/* Header & Filters */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-6 font-sans text-gray-800">
+            {/* Header & Toolbar */}
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-5">
+                {/* Top Row: Title & View Switcher */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div>
                         <h2 className="text-2xl font-bold text-gray-800">Dashboard Operativo</h2>
-                        <p className="text-gray-500">Monitor de rendimiento de proyectos y calidad</p>
+                        <p className="text-gray-500 text-sm">Monitor de rendimiento de proyectos y calidad</p>
                     </div>
 
-                    {/* Project Selector */}
-                    <div className="flex items-center space-x-3 bg-gray-50 px-4 py-2 rounded-lg border border-gray-200">
-                        <Briefcase size={18} className="text-gray-500" />
-                        <select
-                            className="bg-transparent border-none focus:ring-0 text-gray-700 font-medium"
-                            value={selectedProjectId || ''}
-                            onChange={(e) => setSelectedProjectId(Number(e.target.value))}
-                        >
-                            <option value="">-- Vista Portfolio (Roll-up) --</option>
-                            {projects.map(p => (
-                                <option key={p.proyecto_id} value={p.proyecto_id}>{p.nombre}</option>
-                            ))}
-                        </select>
+                    {/* View Switcher & Project Selector */}
+                    <div className="flex items-center gap-3 bg-gray-50 p-1 rounded-lg border border-gray-200">
+                        <div className="flex bg-white rounded-md shadow-sm">
+                            <button
+                                onClick={() => setViewMode('portfolio')}
+                                className={`px-3 py-1.5 text-sm font-medium rounded-l-md transition-colors ${viewMode === 'portfolio' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                            >
+                                Portafolio
+                            </button>
+                            <div className="w-px bg-gray-200"></div>
+                            <button
+                                onClick={() => setViewMode('project')}
+                                className={`px-3 py-1.5 text-sm font-medium rounded-r-md transition-colors ${viewMode === 'project' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}
+                            >
+                                Proyecto
+                            </button>
+                        </div>
+
+                        {viewMode === 'project' && (
+                            <div className="relative animate-fade-in">
+                                <select
+                                    className="bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-700 py-1 pl-2 pr-8 cursor-pointer"
+                                    value={selectedProjectId || ''}
+                                    onChange={(e) => setSelectedProjectId(Number(e.target.value))}
+                                >
+                                    {projects.map(p => (
+                                        <option key={p.proyecto_id} value={p.proyecto_id}>{p.nombre}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Filters Bar */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-gray-100">
-                    <div className="flex items-center space-x-2">
-                        <Calendar size={16} className="text-gray-400" />
-                        <input
-                            type="date"
-                            className="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                            value={filters.startDate}
-                            onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                        />
+                {/* Toolbar: Presets, Search, Filter Button */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-4 border-t border-gray-100">
+                    {/* Left: Presets */}
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 no-scrollbar">
+                        <span className="text-xs font-medium text-gray-400 uppercase mr-1">Periodo:</span>
+                        {[
+                            { label: 'Últ. 30d', days: 30 },
+                            { label: 'Últ. 90d', days: 90 },
+                            { label: 'YTD', days: 365 }, // Simplified YTD
+                            { label: 'Todo', days: 'all' }
+                        ].map(preset => (
+                            <button
+                                key={preset.label}
+                                onClick={() => handlePresetClick(preset.days)}
+                                className={`px-3 py-1.5 text-sm rounded-full border transition-colors whitespace-nowrap ${(preset.days === 'all' && !filters.startDate) || (filters.startDate && preset.days !== 'all') // Simple active check logic
+                                    ? 'bg-blue-50 border-blue-200 text-blue-700'
+                                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                                    }`}
+                            >
+                                {preset.label}
+                            </button>
+                        ))}
                     </div>
-                    <div className="flex items-center space-x-2">
-                        <Filter size={16} className="text-gray-400" />
-                        <select
-                            className="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 w-full"
-                            value={filters.type}
-                            onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                        >
-                            <option value="all">Todos los Tipos</option>
-                            <option value="desarrollo">Desarrollo</option>
-                            <option value="mantenimiento">Mantenimiento</option>
-                        </select>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Filter size={16} className="text-gray-400" />
-                        <select
-                            className="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 w-full"
-                            value={filters.status}
-                            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                        >
-                            <option value="all">Todos los Estados</option>
-                            <option value="activo">Activo</option>
-                            <option value="completado">Completado</option>
-                        </select>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Users size={16} className="text-gray-400" />
-                        <select
-                            className="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 w-full"
-                            value={filters.client}
-                            onChange={(e) => setFilters({ ...filters, client: e.target.value })}
-                        >
-                            <option value="all">Todos los Clientes</option>
-                            {/* Mock clients */}
-                            <option value="cliente1">Cliente A</option>
-                            <option value="cliente2">Cliente B</option>
-                        </select>
+
+                    {/* Right: Search & Filter */}
+                    <div className="flex items-center gap-3 w-full lg:w-auto">
+                        <div className="relative flex-1 lg:w-64">
+                            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Buscar..."
+                                className="w-full pl-9 pr-4 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                value={filters.query}
+                                onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value }))}
+                            />
+                        </div>
+
+                        <div className="relative">
+                            <button
+                                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                                className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md border transition-colors ${isFilterOpen || activeFiltersCount > 0 ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                                    }`}
+                            >
+                                <Filter size={16} />
+                                <span>Filtros</span>
+                                {activeFiltersCount > 0 && (
+                                    <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                                        {activeFiltersCount}
+                                    </span>
+                                )}
+                            </button>
+
+                            {/* Filter Panel Popover */}
+                            <FilterPanel
+                                isOpen={isFilterOpen}
+                                onClose={() => setIsFilterOpen(false)}
+                                currentFilters={filters}
+                                onApply={handleApplyFilters}
+                                onClear={handleClearFilters}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>

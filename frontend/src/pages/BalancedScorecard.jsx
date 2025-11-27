@@ -13,7 +13,7 @@ const PerspectiveCard = ({ title, objectives, color }) => (
                                 <div className="flex justify-between mb-1">
                                     <span className="text-gray-600">{kr.name}</span>
                                     <span className={`font-semibold ${kr.status === 'success' ? 'text-green-600' : kr.status === 'warning' ? 'text-yellow-600' : 'text-red-600'}`}>
-                                        {kr.value}
+                                        {kr.value} <span className="text-xs text-gray-400 font-normal">(Meta: {kr.goal})</span>
                                     </span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-1.5">
@@ -41,9 +41,9 @@ const BalancedScorecard = () => {
                 {
                     name: "F1. Asegurar la rentabilidad de los proyectos",
                     krs: [
-                        { name: "F1.1 ROI promedio ≥ 12%", value: "15%", progress: "100%", status: "success" },
-                        { name: "F1.2 Desviación de costos ≤ 10%", value: "8%", progress: "100%", status: "success" },
-                        { name: "F1.3 ≥ 85% proyectos con ganancia > 0", value: "82%", progress: "96%", status: "warning" }
+                        { name: "F1.1 ROI promedio ≥ 12%", value: "15%", goal: "12%", progress: "100%", status: "success" },
+                        { name: "F1.2 Desviación de costos ≤ 10%", value: "8%", goal: "10%", progress: "100%", status: "success" },
+                        { name: "F1.3 ≥ 85% proyectos con ganancia > 0", value: "82%", goal: "85%", progress: "96%", status: "warning" }
                     ]
                 }
             ]
@@ -55,9 +55,9 @@ const BalancedScorecard = () => {
                 {
                     name: "C1. Entregar productos confiables y a tiempo",
                     krs: [
-                        { name: "C1.1 ≥ 90% entregados a tiempo", value: "88%", progress: "97%", status: "warning" },
-                        { name: "C1.2 ≥ 95% sin defectos críticos", value: "92%", progress: "96%", status: "warning" },
-                        { name: "C1.3 ≥ 80% con retrasos ≤ 20%", value: "75%", progress: "93%", status: "red" }
+                        { name: "C1.1 ≥ 90% entregados a tiempo", value: "88%", goal: "90%", progress: "97%", status: "warning" },
+                        { name: "C1.2 ≥ 95% sin defectos críticos", value: "92%", goal: "95%", progress: "96%", status: "warning" },
+                        { name: "C1.3 ≥ 80% con retrasos ≤ 20%", value: "75%", goal: "80%", progress: "93%", status: "red" }
                     ]
                 }
             ]
@@ -69,9 +69,9 @@ const BalancedScorecard = () => {
                 {
                     name: "P1. Optimizar desarrollo y pruebas",
                     krs: [
-                        { name: "P1.1 Defectos promedio ≤ 25", value: "22", progress: "100%", status: "success" },
-                        { name: "P1.2 ≥ 90% tareas completadas", value: "94%", progress: "100%", status: "success" },
-                        { name: "P1.3 Pico defectos en primer 40%", value: "35%", progress: "100%", status: "success" }
+                        { name: "P1.1 Defectos promedio ≤ 25", value: "22", goal: "25", progress: "100%", status: "success" },
+                        { name: "P1.2 ≥ 90% tareas completadas", value: "94%", goal: "90%", progress: "100%", status: "success" },
+                        { name: "P1.3 Pico defectos en primer 40%", value: "35%", goal: "40%", progress: "100%", status: "success" }
                     ]
                 }
             ]
@@ -83,8 +83,8 @@ const BalancedScorecard = () => {
                 {
                     name: "A1. Fortalecer capacidad del equipo",
                     krs: [
-                        { name: "A1.1 Productividad horas ≥ 85%", value: "87%", progress: "100%", status: "success" },
-                        { name: "A1.2 Uso modelo predictivo ≥ 70%", value: "60%", progress: "85%", status: "red" }
+                        { name: "A1.1 Productividad horas ≥ 85%", value: "87%", goal: "85%", progress: "100%", status: "success" },
+                        { name: "A1.2 Uso modelo predictivo ≥ 70%", value: "60%", goal: "70%", progress: "85%", status: "red" }
                     ]
                 }
             ]

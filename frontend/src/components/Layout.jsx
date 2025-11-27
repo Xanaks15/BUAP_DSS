@@ -9,6 +9,7 @@ const Layout = ({ children }) => {
         { path: '/', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/bsc', label: 'Balanced Scorecard', icon: BarChart3 },
         { path: '/rayleigh', label: 'Modelo Rayleigh', icon: TrendingUp },
+        { path: '/welcome', label: 'Ver Bienvenida', icon: (props) => <span {...props}>👋</span> }, // Custom icon or use a Lucide one
     ];
 
     const handleLogout = () => {
@@ -20,7 +21,7 @@ const Layout = ({ children }) => {
         <div className="min-h-screen bg-gray-50 flex flex-col">
             {/* Top Navbar */}
             <header className="bg-white shadow-sm z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="w-full px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
                         {/* Logo & Brand */}
                         <div className="flex items-center">
@@ -38,9 +39,14 @@ const Layout = ({ children }) => {
                                         <Link
                                             key={item.path}
                                             to={item.path}
+                                            onClick={() => {
+                                                if (item.path === '/welcome') {
+                                                    localStorage.removeItem('seen_welcome');
+                                                }
+                                            }}
                                             className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors ${isActive
-                                                    ? 'border-corporate-blue text-gray-900'
-                                                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                                ? 'border-corporate-blue text-gray-900'
+                                                : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                                                 }`}
                                         >
                                             <Icon size={16} className="mr-2" />
@@ -69,7 +75,7 @@ const Layout = ({ children }) => {
 
             {/* Main Content */}
             <main className="flex-1 overflow-auto">
-                <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                <div className="w-full py-8 px-4 sm:px-6 lg:px-8">
                     {children}
                 </div>
             </main>
