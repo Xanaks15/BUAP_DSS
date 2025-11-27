@@ -129,29 +129,5 @@ CREATE TABLE IF NOT EXISTS fact_defecto (
     FOREIGN KEY (tiempo_id) REFERENCES dim_tiempo(tiempo_id)
 );
 
-/*=========================================
-   FACT: PREDICCIÓN PROYECTO (NUEVA)
-   → TAMBIÉN REFERENCIA proyecto_id (PMO)
-=========================================*/
-CREATE TABLE IF NOT EXISTS fact_prediccion_proyecto (
-    id_prediccion INTEGER PRIMARY KEY AUTOINCREMENT, -- SQLite syntax
-    proyecto_id INT NULL,
-    tiempo_id INT NOT NULL,
-    tipo_proyecto_id INT NULL,
 
-    horas_estimadas DECIMAL(10,2),
-    duracion_semanas INT,
-    severidad VARCHAR(50),
-
-    sigma_parametro DECIMAL(10,4),
-    tiempo_pico DECIMAL(10,4),
-    total_defectos_estimado INT,
-
-    tiempo_prediccion_id INT NOT NULL,
-
-    FOREIGN KEY (proyecto_id) REFERENCES fact_proyecto(proyecto_id),
-    FOREIGN KEY (tiempo_id) REFERENCES dim_tiempo(tiempo_id),
-    FOREIGN KEY (tipo_proyecto_id) REFERENCES dim_tipo_proyecto(tipo_proyecto_id),
-    FOREIGN KEY (tiempo_prediccion_id) REFERENCES dim_tiempo(tiempo_id)
-);
 

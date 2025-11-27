@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Line, Bar } from 'recharts';
 import { predictDefects } from '../services/api';
 
-const RayleighCurves = ({ projectData }) => {
+const RayleighCurves = ({ projectData, compact = false }) => {
     const [prediction, setPrediction] = useState(null);
     const [loading, setLoading] = useState(false);
 
@@ -59,6 +59,26 @@ const RayleighCurves = ({ projectData }) => {
     }, [projectData]);
 
     if (loading || !prediction) return <div>Loading Rayleigh Model...</div>;
+
+    if (compact) {
+        return (
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 h-full flex flex-col">
+                <h3 className="text-sm font-semibold text-gray-600 mb-2">Curva Rayleigh (Defectos)</h3>
+                <div className="flex-1 min-h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={prediction.weekly_predictions}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="week" tick={{ fontSize: 10 }} />
+                            <YAxis tick={{ fontSize: 10 }} />
+                            <Tooltip />
+                            <Area type="monotone" dataKey="defects" fill="#E0F2FE" stroke="#0074C8" name="Est." />
+                            <Bar dataKey="actual_defects" fill="#00A65A" name="Real" barSize={6} fillOpacity={0.6} />
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 mt-8">

@@ -13,7 +13,7 @@ SELECT p.proyecto_id,
        p.cliente_id,
        p.catalogo_id
 FROM proyecto AS p
-WHERE p.metadata_extraccion = 0;
+;
 
 -- extract_tasks
 SELECT t.tarea_id,
@@ -25,13 +25,13 @@ SELECT t.tarea_id,
        t.fecha_completado,
        t.catalogo_tareas_id
 FROM tarea AS t
-WHERE t.metadata_extraccion = 0;
+;
 
 -- extract_project_employees
 SELECT pe.proyecto_id,
        pe.empleado_id
 FROM proyecto_empleado AS pe
-WHERE pe.metadata_extraccion = 0;
+;
 
 -- extract_states
 SELECT e.estado_id,
@@ -50,7 +50,7 @@ SELECT f.id,
        f.monto_real_acumulado,
        f.ingreso_proyecto
 FROM finanzas_proyecto AS f
-WHERE f.metadata_extraccion = 0;
+;
 
 -- extract_catalogues
 SELECT c.catalogo_id,
@@ -83,4 +83,4 @@ SELECT d.defecto_id,
        d.severidad,
        d.fecha_registro
 FROM defecto AS d
-WHERE d.metadata_extraccion = 0;
+;

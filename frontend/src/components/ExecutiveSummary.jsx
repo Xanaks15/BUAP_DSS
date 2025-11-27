@@ -28,8 +28,8 @@ const ExecutiveSummary = ({ metrics }) => {
 
             {/* KPI Widgets Carousel */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <KPIWidget title="SPI (Cronograma)" value={spi} type="gauge" color={spiColor} />
-                <KPIWidget title="CPI (Costo)" value={cpi} type="gauge" color={cpiColor} />
+                <KPIWidget title="Eficiencia de Cronograma (SPI)" value={spi} type="gauge" color={spiColor} />
+                <KPIWidget title="Eficiencia de Costos (CPI)" value={cpi} type="gauge" color={cpiColor} />
                 <KPIWidget title="Productividad ($/hr)" value={`$${productivity}`} />
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex flex-col items-center justify-center">
                     <h3 className="text-gray-500 text-sm font-medium mb-2 uppercase tracking-wide">Riesgo</h3>

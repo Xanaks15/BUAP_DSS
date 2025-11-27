@@ -1,0 +1,25 @@
+Top 20 Projects with Delayed Tasks:
+Project Name                             | Planned    | Delayed    | % Delayed 
+--------------------------------------------------------------------------------
+Gestión Documental QG                    | 199        | 179        | 89.9%
+App Inventarios RC                       | 180        | 176        | 97.8%
+Plataforma Reservas DS                   | 200        | 174        | 87.0%
+Plataforma E-Commerce KJ                 | 200        | 171        | 85.5%
+Sistema RRHH HD                          | 200        | 171        | 85.5%
+App Inventarios PQ                       | 200        | 171        | 85.5%
+Sistema RRHH NO                          | 200        | 170        | 85.0%
+Sistema ERP Alpha YJ                     | 200        | 170        | 85.0%
+App Inventarios TE                       | 200        | 170        | 85.0%
+App de Tareas IR                         | 200        | 169        | 84.5%
+App Inventarios PM                       | 200        | 168        | 84.0%
+Sistema ERP Alpha SK                     | 200        | 167        | 83.5%
+Plataforma E-Commerce AT                 | 200        | 167        | 83.5%
+App Inventarios GQ                       | 200        | 164        | 82.0%
+Gestión Documental UN                    | 187        | 162        | 86.6%
+App Inventarios XU                       | 200        | 161        | 80.5%
+Sistema ERP Alpha YR                     | 190        | 159        | 83.7%
+Plataforma Reservas XG                   | 200        | 159        | 79.5%
+App de Tareas YH                         | 175        | 145        | 82.9%
+Plataforma E-Commerce MB                 | 175        | 145        | 82.9%
+--------------------------------------------------------------------------------
+Total Portfolio: Planned=46654, Delayed=27644 (59.3%)

@@ -8,7 +8,7 @@ from scipy.stats import truncnorm
 
 # ==== Configuration ====
 OUTPUT_DIR = "./synthetic_output"
-NUM_PROYECTOS = 1000
+NUM_PROYECTOS = 4000
 random.seed(42)
 np.random.seed(42)
 
@@ -139,6 +139,7 @@ def generar_proyectos_finanzas_catalogos(df_cliente, df_tipo_proyecto, df_estado
     HOY = datetime.today().date()
     PLAN_START_MIN = datetime(2020,1,1)
     PLAN_END_CAP   = datetime(2025,12,31)
+    nombres_generados = set()
 
     for pid in range(1, NUM_PROYECTOS+1):
         cliente_id = random.choice(df_cliente["cliente_id"].tolist())
@@ -149,11 +150,15 @@ def generar_proyectos_finanzas_catalogos(df_cliente, df_tipo_proyecto, df_estado
         estado_nom = seleccionar_estado_realista(horas_plan)
         estado_id  = int(df_estado.loc[df_estado.nombre_estado==estado_nom,"estado_id"].iat[0])
 
-        nombre_proyecto = random.choice([
-            "Sistema ERP Alpha","Plataforma Reservas","App Inventarios","Portal Clientes",
-            "Gestión Documental","Aplicación CRM","Sistema RRHH","Plataforma E-Commerce",
-            "App de Tareas","Sistema Flotas"
-        ]) + f" {fake.lexify('??').upper()}"
+        while True:
+            nombre_proyecto = random.choice([
+                "Sistema ERP Alpha","Plataforma Reservas","App Inventarios","Portal Clientes",
+                "Gestión Documental","Aplicación CRM","Sistema RRHH","Plataforma E-Commerce",
+                "App de Tareas","Sistema Flotas"
+            ]) + f" {fake.lexify('??').upper()}"
+            if nombre_proyecto not in nombres_generados:
+                nombres_generados.add(nombre_proyecto)
+                break
         descripcion = fake.sentence(8)
 
         fecha_inicio_plan = fake.date_time_between_dates(PLAN_START_MIN, PLAN_END_CAP)

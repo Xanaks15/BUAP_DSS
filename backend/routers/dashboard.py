@@ -73,13 +73,93 @@ def get_general_kpis(
             "projects_by_status": {}
         }
         
-    total_profit = sum([p.ganancia_proyecto or 0 for p in filtered_projects])
+    total_profit = sum([float(p.ganancia_proyecto or 0) for p in filtered_projects])
     avg_roi = sum([p.roi or 0 for p in filtered_projects]) / len(filtered_projects)
     
     # Calculate Total PV and AC for Portfolio
-    total_pv = sum([p.monto_planificado or 0 for p in filtered_projects])
-    total_ac = sum([p.monto_real or 0 for p in filtered_projects])
+    total_pv = sum([float(p.monto_planificado or 0) for p in filtered_projects])
+    total_ac = sum([float(p.monto_real or 0) for p in filtered_projects])
     
+    # Calculate On-Time Projects Percentage
+    # Logic: fecha_fin_real <= fecha_fin_plan
+    # Note: Dates are FKs to DimTiempo (int), so comparing IDs might work if IDs are sequential/ordered by date.
+    # Ideally we should join DimTiempo to compare actual dates, but assuming ID monotonicity for now or if they are just IDs.
+    # If they are IDs, we can't strictly compare them unless we know the mapping.
+    # However, let's assume for this MVP that if real <= plan it's on time. 
+    # If they are None, we ignore.
+    on_time_count = 0
+    for p in filtered_projects:
+        if p.fecha_fin_real and p.fecha_fin_plan:
+            if p.fecha_fin_real <= p.fecha_fin_plan:
+                on_time_count += 1
+    
+    on_time_projects_pct = (on_time_count / len(filtered_projects) * 100) if filtered_projects else 0
+
+    # Calculate Critical Defects
+    # We need to query FactDefecto for these projects
+    project_ids = [p.proyecto_id for p in filtered_projects]
+    critical_defects = 0
+    if project_ids:
+        critical_defects = db.query(func.count(FactDefecto.defecto_id))\
+            .filter(FactDefecto.proyecto_id.in_(project_ids))\
+            .filter(FactDefecto.severidad == 'Alta')\
+            .scalar()
+
+    # Calculate Additional KPIs
+    
+    # Hours Real vs Planned
+    total_hours_planned = sum([float(p.horas_planificadas or 0) for p in filtered_projects])
+    total_hours_real = sum([float(p.horas_trabajadas or 0) for p in filtered_projects])
+    hours_real_vs_planned_pct = (total_hours_real / total_hours_planned * 100) if total_hours_planned > 0 else 0
+
+    # Cost Real vs Planned
+    # total_pv and total_ac are already calculated above
+    cost_real_vs_planned_pct = (total_ac / total_pv * 100) if total_pv > 0 else 0
+
+    # Tasks KPIs
+    total_tasks_planned = sum([float(p.tareas_planificadas or 0) for p in filtered_projects])
+    total_tasks_completed = sum([float(p.tareas_completadas or 0) for p in filtered_projects])
+    total_tasks_delayed = sum([float(p.tareas_retrasadas or 0) for p in filtered_projects])
+    
+    tasks_completed_pct = (total_tasks_completed / total_tasks_planned * 100) if total_tasks_planned > 0 else 0
+    tasks_delayed_pct = (total_tasks_delayed / total_tasks_planned * 100) if total_tasks_planned > 0 else 0
+
+    # Avg Employees
+    total_employees = sum([float(p.empleados_asignados or 0) for p in filtered_projects])
+    avg_employees_assigned = total_employees / len(filtered_projects) if filtered_projects else 0
+
+    # Productivity (EV / Hours Worked)
+    # EV for portfolio = sum(EV of each project)
+    # EV of project = (completed / planned) * budget
+    total_ev = 0
+    for p in filtered_projects:
+        t_planned = float(p.tareas_planificadas or 1)
+        t_completed = float(p.tareas_completadas or 0)
+        budget = float(p.monto_planificado or 0)
+        progress = t_completed / t_planned if t_planned > 0 else 0
+        total_ev += (budget * progress)
+        
+    productivity = total_ev / total_hours_real if total_hours_real > 0 else 0
+
+    # Defects Metrics
+    project_ids = [p.proyecto_id for p in filtered_projects]
+    total_defects = 0
+    defects_by_phase = {}
+    
+    if project_ids:
+        # Total Defects
+        total_defects = db.query(func.count(FactDefecto.defecto_id))\
+            .filter(FactDefecto.proyecto_id.in_(project_ids))\
+            .scalar()
+            
+        # Defects by Phase
+        defects_phase_query = db.query(DimFaseSDLC.nombre_fase, func.count(FactDefecto.defecto_id))\
+            .join(FactDefecto, FactDefecto.fase_id == DimFaseSDLC.fase_sdlc_id)\
+            .filter(FactDefecto.proyecto_id.in_(project_ids))\
+            .group_by(DimFaseSDLC.nombre_fase).all()
+        
+        defects_by_phase = {p: c for p, c in defects_phase_query}
+
     # Recalculate status counts for the filtered set
     # We can do this in python for the filtered list
     status_counts_dict = {}
@@ -93,7 +173,18 @@ def get_general_kpis(
         "total_profit": round(total_profit, 2),
         "total_pv": round(total_pv, 2),
         "total_ac": round(total_ac, 2),
-        "projects_by_status": status_counts_dict
+        "total_ev": round(total_ev, 2),
+        "on_time_projects_pct": round(on_time_projects_pct, 1),
+        "critical_defects": critical_defects,
+        "total_defects": total_defects,
+        "hours_real_vs_planned_pct": round(hours_real_vs_planned_pct, 1),
+        "cost_real_vs_planned_pct": round(cost_real_vs_planned_pct, 1),
+        "tasks_completed_pct": round(tasks_completed_pct, 1),
+        "tasks_delayed_pct": round(tasks_delayed_pct, 1),
+        "avg_employees_assigned": round(avg_employees_assigned, 1),
+        "productivity": round(productivity, 2),
+        "projects_by_status": status_counts_dict,
+        "defects_by_phase": defects_by_phase
     }
 
 @router.get("/projects/{project_id}/metrics")

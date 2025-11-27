@@ -164,6 +164,24 @@ def transform_data(tables: Dict[str, pd.DataFrame]) -> Tuple:
         print("No hay proyectos nuevos para procesar.")
         return (pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame())
 
+    # --- FILTERING LOGIC (ONLY FACTS) ---
+    print("Filtrando proyectos activos (dejando solo Completado/Cancelado)...")
+    valid_statuses = ['Completado', 'Cancelado']
+    valid_status_ids = states[states['nombre_estado'].isin(valid_statuses)]['estado_id'].tolist()
+    
+    original_proj_count = len(projects)
+    projects = projects[projects['estado_id'].isin(valid_status_ids)]
+    print(f"Proyectos filtrados: {original_proj_count} -> {len(projects)}")
+    
+    valid_project_ids = projects['proyecto_id'].tolist()
+    
+    # Filter related tables
+    tasks = tasks[tasks['catalogo_tareas_id'].isin(valid_project_ids)]
+    project_employees = project_employees[project_employees['proyecto_id'].isin(valid_project_ids)]
+    finances = finances[finances['proyecto_id'].isin(valid_project_ids)]
+    defects = defects[defects['proyecto_id'].isin(valid_project_ids)]
+    # ------------------------------------
+
     dim_estado_df = states.copy()
     dim_tipo_proyecto_df = types.copy()
     dim_cliente_df = clients.rename(columns={'nombre': 'nombre_cliente'})
@@ -354,6 +372,37 @@ def main():
     start_load = time.time()
     print("Cargando datos...")
     ssd_conn = get_db_connection(ssd_config, db_type=DB_TYPE)
+    
+    # --- TRUNCATE TABLES ---
+    print("Vaciando tablas destino (Clean Load)...")
+    cursor = ssd_conn.cursor()
+    try:
+        if DB_TYPE == 'mysql':
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 0;")
+        
+        tables_to_truncate = [
+            'fact_defecto', 'fact_proyecto', 
+            'dim_fase_sdlc', 'dim_tipo_defecto', 'dim_cliente', 
+            'dim_tipo_proyecto', 'dim_estado', 'dim_tiempo', 
+            'dim_dia', 'dim_mes', 'dim_anio'
+        ]
+        
+        for table in tables_to_truncate:
+            try:
+                if DB_TYPE == 'mysql':
+                    cursor.execute(f"TRUNCATE TABLE {table};")
+                else:
+                    cursor.execute(f"DELETE FROM {table};")
+            except Exception as e:
+                print(f"Error truncating {table}: {e}")
+                
+        if DB_TYPE == 'mysql':
+            cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
+        ssd_conn.commit()
+        print("Tablas vaciadas correctamente.")
+    except Exception as e:
+        print(f"Error durante vaciado: {e}")
+    # -----------------------
     
     try:
         # Load Dimensions
