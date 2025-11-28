@@ -22,7 +22,7 @@ services:
         sync: false
 
   # Frontend Service
-  - type: static
+  - type: web
     name: buap-dss-frontend
     env: static
     region: oregon
