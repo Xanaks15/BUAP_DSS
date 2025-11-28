@@ -11,17 +11,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
-origins = [
-    "http://localhost:5173",
-    "https://neskanbackend.vercel.app",
-    "*" # Allow all for development/preview flexibility
-]
-
-# CORS
+# Lista explícita + soporte para previews de Vercel
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"], # Localhost for development
-    allow_origin_regex="https://.*\.vercel\.app", # Allow all Vercel subdomains (production & previews)
+    allow_origins=[
+        "http://localhost:5173",
+        "https://neskan.vercel.app",
+        "https://neskan-q1rcvlpi4-xanaks15s-projects.vercel.app"
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app",  # Permite todos los subdominios de vercel.app (preview incluido)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
