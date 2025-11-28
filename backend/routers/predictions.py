@@ -24,18 +24,69 @@ class MonteCarloInput(BaseModel):
     tipoProyecto: str = "Desarrollo Web"
 
 @router.post("/rayleigh")
-def predict_defects(input_data: RayleighInput):
+def predict_defects(input_data: RayleighInput, db: Session = Depends(get_db)):
     # Map complexity to peak time factor (just an example heuristic)
     # In a real scenario, this would be calibrated.
     # Here we use the logic from the frontend: sigma = duration / 2.5
     sigma = input_data.duracionSemanas / 2.5
     
-    # Estimate total defects based on complexity
-    rates = {"baja": 0.03, "media": 0.05, "alta": 0.08}
-    rate = rates.get(input_data.complejidad, 0.05)
-    total_defects = int(input_data.horasEstimadas * rate)
+    # 1. Calculate Historical Defect Rate
+    # Strategy: 
+    # - Try to find projects of the same 'tipoProyecto'
+    # - Calculate sum(defects) / sum(hours)
+    # - If no data, fallback to global average
+    # - If still no data, fallback to complexity constants
+    
+    historical_rate = 0.0
+    
+    # Get Project Type ID if possible
+    tipo_proj_id = db.query(DimTipoProyecto.tipo_proyecto_id)\
+        .filter(DimTipoProyecto.nombre == input_data.tipoProyecto).scalar()
+        
+    query = db.query(
+        func.sum(FactProyecto.horas_trabajadas).label("total_hours"),
+        func.count(FactDefecto.defecto_id).label("total_defects")
+    ).outerjoin(FactDefecto, FactProyecto.proyecto_id == FactDefecto.proyecto_id)
+    
+    if tipo_proj_id:
+        query = query.filter(FactProyecto.tipo_proyecto_id == tipo_proj_id)
+        
+    result = query.first()
+    
+    if result and result.total_hours and result.total_hours > 0:
+        # We have specific historical data
+        historical_rate = result.total_defects / float(result.total_hours)
+        print(f"DEBUG: Using Historical Rate for {input_data.tipoProyecto}: {historical_rate:.4f} (Defects: {result.total_defects}, Hours: {result.total_hours})")
+    else:
+        # Fallback: Global Average
+        global_result = db.query(
+            func.sum(FactProyecto.horas_trabajadas).label("total_hours"),
+            func.count(FactDefecto.defecto_id).label("total_defects")
+        ).outerjoin(FactDefecto, FactProyecto.proyecto_id == FactDefecto.proyecto_id).first()
+        
+        if global_result and global_result.total_hours and global_result.total_hours > 0:
+            historical_rate = global_result.total_defects / float(global_result.total_hours)
+            print(f"DEBUG: Using Global Historical Rate: {historical_rate:.4f}")
+        else:
+            # Fallback: Complexity Constants
+            rates = {"baja": 0.03, "media": 0.05, "alta": 0.08}
+            historical_rate = rates.get(input_data.complejidad, 0.05)
+            print(f"DEBUG: Using Fixed Rate (No History): {historical_rate}")
+
+    # Apply Complexity Factor to the Historical Rate
+    # If complexity is 'alta', we might expect slightly more than average, 'baja' slightly less.
+    # Simple heuristic adjustment:
+    complexity_multipliers = {"baja": 0.8, "media": 1.0, "alta": 1.2}
+    adjusted_rate = historical_rate * complexity_multipliers.get(input_data.complejidad, 1.0)
+    
+    total_defects = int(input_data.horasEstimadas * adjusted_rate)
     
     result = model.fit_predict(total_defects, sigma, input_data.duracionSemanas)
+    
+    # Inject the used rate into the result for transparency
+    result["used_defect_rate"] = round(adjusted_rate, 5)
+    result["data_source"] = "Historical Data" if (result and result.total_hours) else "Fixed Constants"
+    
     return result
 
 @router.post("/monte-carlo")
