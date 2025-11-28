@@ -21,13 +21,13 @@ services:
       - key: SSD_PORT
         sync: false
 
-  # Frontend Service
+    # Frontend Service
   - type: web
     name: buap-dss-frontend
-    env: static
+    env: node
     region: oregon
     buildCommand: cd frontend && npm install && npm run build
-    publishDir: frontend/dist
+    startCommand: npx serve -s frontend/dist
     routes:
       - type: rewrite
         source: /*
@@ -38,3 +38,4 @@ services:
           type: web
           name: buap-dss-backend
           property: url
+
