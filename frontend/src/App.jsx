@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import BalancedScorecard from './pages/BalancedScorecard';
 import RayleighModel from './pages/RayleighModel';
+import MonteCarloBeta from './pages/MonteCarloBeta';
 import Welcome from './pages/Welcome';
 import Login from './pages/Login';
 
@@ -59,6 +60,14 @@ function App() {
                                             </ProtectedRoute>
                                         }
                                     />
+                                    <Route
+                                        path="/monte-carlo-beta"
+                                        element={
+                                            <ProtectedRoute>
+                                                <MonteCarloBeta />
+                                            </ProtectedRoute>
+                                        }
+                                    />
                                 </Routes>
                             </Layout>
                         </WelcomeGuard>
@@ -70,3 +79,4 @@ function App() {
 }
 
 export default App;
+// Force rebuild

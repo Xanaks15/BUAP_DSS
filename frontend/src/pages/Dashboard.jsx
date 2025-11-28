@@ -37,20 +37,61 @@ const Dashboard = () => {
         });
     }, []);
 
-    // Sync viewMode with selectedProjectId
+    // Sync viewMode with selectedProjectId (which now acts as selectedType in project mode)
     useEffect(() => {
         if (viewMode === 'portfolio') {
             setSelectedProjectId(null);
-        } else if (viewMode === 'project' && !selectedProjectId && projects.length > 0) {
-            setSelectedProjectId(projects[0].proyecto_id);
+        } else if (viewMode === 'project' && !selectedProjectId) {
+            setSelectedProjectId('Desarrollo Web');
         }
-    }, [viewMode, projects]);
+    }, [viewMode]);
 
     useEffect(() => {
         setMetricsLoading(true);
-        if (selectedProjectId) {
-            getProjectMetrics(selectedProjectId).then(data => {
-                setProjectMetrics(data);
+
+        // If viewMode is 'project', we treat selectedProjectId as the selected TYPE string
+        // If viewMode is 'portfolio', we use the global filters
+
+        if (viewMode === 'project' && selectedProjectId) {
+            // Fetch aggregated metrics for the selected TYPE
+            // We reuse getGeneralKPIs but force the type filter
+            const typeFilter = { ...filters, type: selectedProjectId };
+
+            getGeneralKPIs(typeFilter).then(data => {
+                // Calculate SPI and CPI from aggregated totals
+                const total_ev = data.total_ev || 0;
+                const total_pv = data.total_pv || 0;
+                const total_ac = data.total_ac || 0;
+
+                const spi = total_pv > 0 ? total_ev / total_pv : 0;
+                const cpi = total_ac > 0 ? total_ev / total_ac : 0;
+
+                setProjectMetrics({
+                    name: `Tipo: ${selectedProjectId}`,
+                    spi: parseFloat(spi.toFixed(2)),
+                    cpi: parseFloat(cpi.toFixed(2)),
+                    ev: total_ev,
+                    tasks_completed_pct: data.tasks_completed_pct || 0,
+                    tasks_delayed_pct: data.tasks_delayed_pct || 0,
+                    tasks_not_completed_pct: data.tasks_not_completed_pct || 0,
+                    hours_real_vs_planned_pct: data.hours_real_vs_planned_pct || 0,
+                    cost_real_vs_planned_pct: data.cost_real_vs_planned_pct || 0,
+                    avg_employees_assigned: data.avg_employees_assigned || 0,
+                    projects_by_status: data.projects_by_status || {},
+
+                    // New metrics from backend
+                    avg_roi: data.avg_roi || 0,
+                    delay_days: data.avg_delay_days || 0,
+                    on_time_projects_pct: data.on_time_projects_pct || 0,
+                    critical_defects: data.critical_defects || 0,
+                    total_defects: data.total_defects || 0,
+                    defects_by_phase: data.defects_by_phase || {},
+                    defects_by_severity: data.defects_by_severity || {},
+
+                    // Map specific fields expected by ExecutiveSummary
+                    total_hours_planned: data.total_hours_planned,
+                    total_hours_real: data.total_hours_real
+                });
                 setMetricsLoading(false);
             }).catch(err => {
                 console.error(err);
@@ -61,7 +102,7 @@ const Dashboard = () => {
             getGeneralKPIs(filters).then(data => {
                 setProjectMetrics({
                     name: "Vista Portfolio (Global)",
-                    spi: 1.0,
+                    spi: 1.0, // Portfolio usually doesn't have single SPI/CPI, or it's 1.0 baseline
                     cpi: 1.0,
                     ev: data.total_ev || 0,
                     pv: data.total_pv || 0,
@@ -71,17 +112,23 @@ const Dashboard = () => {
                     productivity: data.productivity || 0,
                     isPortfolio: true,
                     // New metrics from backend
-                    on_time_pct: data.on_time_projects_pct || 0,
+                    avg_roi: data.avg_roi || 0,
+                    delay_days: data.avg_delay_days || 0,
+                    on_time_projects_pct: data.on_time_projects_pct || 0,
                     critical_defects: data.critical_defects || 0,
                     total_defects: data.total_defects || 0,
                     defects_by_phase: data.defects_by_phase || {},
+                    defects_by_severity: data.defects_by_severity || {},
                     tasks_completed_pct: data.tasks_completed_pct || 0,
                     tasks_delayed_pct: data.tasks_delayed_pct || 0,
                     tasks_not_completed_pct: data.tasks_not_completed_pct || 0,
                     hours_real_vs_planned_pct: data.hours_real_vs_planned_pct || 0,
                     cost_real_vs_planned_pct: data.cost_real_vs_planned_pct || 0,
-                    avg_employees: data.avg_employees_assigned || 0,
-                    ...data
+                    avg_employees_assigned: data.avg_employees_assigned || 0,
+                    projects_by_status: data.projects_by_status || {},
+
+                    total_hours_planned: data.total_hours_planned,
+                    total_hours_real: data.total_hours_real
                 });
                 setMetricsLoading(false);
             }).catch(err => {
@@ -89,7 +136,7 @@ const Dashboard = () => {
                 setMetricsLoading(false);
             });
         }
-    }, [selectedProjectId, filters]);
+    }, [selectedProjectId, filters, viewMode]);
 
     // Handlers
     const handlePresetClick = (days) => {
@@ -182,12 +229,14 @@ const Dashboard = () => {
                             <div className="relative animate-fade-in">
                                 <select
                                     className="bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-700 py-1 pl-2 pr-8 cursor-pointer"
-                                    value={selectedProjectId || ''}
-                                    onChange={(e) => setSelectedProjectId(Number(e.target.value))}
+                                    value={selectedProjectId || 'Desarrollo Web'}
+                                    onChange={(e) => setSelectedProjectId(e.target.value)}
                                 >
-                                    {projects.map(p => (
-                                        <option key={p.proyecto_id} value={p.proyecto_id}>{p.nombre}</option>
-                                    ))}
+                                    <option value="Desarrollo Web">Desarrollo Web</option>
+                                    <option value="Aplicación Móvil">Aplicación Móvil</option>
+                                    <option value="Software Empresarial">Software Empresarial</option>
+                                    <option value="Infraestructura Cloud">Infraestructura Cloud</option>
+                                    <option value="Consultoría Técnica">Consultoría Técnica</option>
                                 </select>
                             </div>
                         )}
@@ -359,7 +408,7 @@ const Dashboard = () => {
                             {/* Defect Distribution Chart (Always Visible) */}
                             <div className="h-full">
                                 <QualityDashboard
-                                    projectId={selectedProjectId}
+                                    projectId={viewMode === 'project' ? null : selectedProjectId}
                                     donutOnly={true}
                                     providedData={projectMetrics.defects_by_severity}
                                 />

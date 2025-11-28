@@ -1,0 +1,33 @@
+{
+    "version": 2,
+    "builds": [
+        {
+            "src": "backend/main.py",
+            "use": "@vercel/python"
+        },
+        {
+            "src": "frontend/package.json",
+            "use": "@vercel/static-build",
+            "config": {
+                "distDir": "dist"
+            }
+        }
+    ],
+    "routes": [
+        {
+            "src": "/api/(.*)",
+            "dest": "backend/main.py"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "frontend/$1"
+        }
+    ],
+    "env": {
+        "DB_HOST": "aws-0-us-west-1.pooler.supabase.com",
+        "DB_PORT": "6543",
+        "DB_USER": "postgres.xkqz...",
+        "DB_PASSWORD": "...",
+        "DB_NAME": "postgres"
+    }
+}

@@ -63,7 +63,7 @@ const Login = () => {
                 </form>
 
                 <div className="mt-6 text-center text-xs text-gray-400">
-                    BUAP DSS &copy; 2025
+                    NESKAN-DSS &copy; 2025
                 </div>
             </div>
         </div>

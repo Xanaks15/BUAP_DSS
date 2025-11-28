@@ -52,7 +52,7 @@ const Welcome = () => {
                                 <div className="w-8 h-8 bg-corporate-blue rounded-lg flex items-center justify-center">
                                     <span className="text-white font-bold text-lg">D</span>
                                 </div>
-                                <span className="text-xl font-bold text-gray-900 tracking-tight">BUAP DSS</span>
+                                <span className="text-xl font-bold text-gray-900 tracking-tight">NESKAN-DSS</span>
                             </div>
                             <h1 className="text-4xl lg:text-6xl font-extrabold tracking-tight text-gray-900 mb-6">
                                 Plataforma <span className="text-corporate-blue">DSS</span>
@@ -107,6 +107,16 @@ const Welcome = () => {
                                 <h3 className="font-bold text-gray-900 mb-1">Eficiencia</h3>
                                 <p className="text-sm text-gray-500">Optimización operativa continua.</p>
                             </div>
+                        </div>
+
+                        {/* Predictive Models Highlight */}
+                        <div className="mt-6 bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-2xl border border-blue-100">
+                            <h3 className="font-bold text-gray-900 mb-2 flex items-center">
+                                <span className="mr-2">🤖</span> Modelo Predictivo
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-3">
+                                Incorporamos el <strong>Modelo Rayleigh</strong> para la estimación precisa de defectos a lo largo del ciclo de vida del proyecto, permitiendo una gestión proactiva de la calidad.
+                            </p>
                         </div>
 
                         {/* CTAs */}

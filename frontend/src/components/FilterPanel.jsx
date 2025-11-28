@@ -55,9 +55,11 @@ const FilterPanel = ({ isOpen, onClose, currentFilters, onApply, onClear }) => {
                         onChange={(e) => handleChange('type', e.target.value)}
                     >
                         <option value="all">Todos</option>
-                        <option value="desarrollo">Desarrollo</option>
-                        <option value="mantenimiento">Mantenimiento</option>
-                        <option value="consultoria">Consultoría</option>
+                        <option value="Desarrollo Web">Desarrollo Web</option>
+                        <option value="Aplicación Móvil">Aplicación Móvil</option>
+                        <option value="Software Empresarial">Software Empresarial</option>
+                        <option value="Infraestructura Cloud">Infraestructura Cloud</option>
+                        <option value="Consultoría Técnica">Consultoría Técnica</option>
                     </select>
                 </div>
 

@@ -9,6 +9,7 @@ const Layout = ({ children }) => {
         { path: '/', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/bsc', label: 'Balanced Scorecard', icon: BarChart3 },
         { path: '/rayleigh', label: 'Modelo Rayleigh', icon: TrendingUp },
+        { path: '/monte-carlo-beta', label: 'Simulación (Beta)', icon: (props) => <span {...props}>🎲</span> },
         { path: '/welcome', label: 'Ver Bienvenida', icon: (props) => <span {...props}>👋</span> }, // Custom icon or use a Lucide one
     ];
 
@@ -26,7 +27,7 @@ const Layout = ({ children }) => {
                         {/* Logo & Brand */}
                         <div className="flex items-center">
                             <div className="flex-shrink-0 flex items-center">
-                                <h1 className="text-2xl font-bold text-corporate-blue">BUAP DSS</h1>
+                                <h1 className="text-2xl font-bold text-corporate-blue">NESKAN-DSS</h1>
                                 <span className="ml-2 text-xs text-gray-400 hidden sm:block">Decision Support System</span>
                             </div>
 

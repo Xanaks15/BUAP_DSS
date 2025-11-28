@@ -7,7 +7,7 @@ const RayleighModel = () => {
         horasEstimadas: 1000,
         duracionSemanas: 12,
         complejidad: 'media',
-        tipoProyecto: 'desarrollo'
+        tipoProyecto: 'Desarrollo Web'
     });
 
     const [results, setResults] = useState(null);
@@ -28,8 +28,18 @@ const RayleighModel = () => {
             media: 0.05,
             alta: 0.08
         };
+
+        const typeMultipliers = {
+            'Desarrollo Web': 1.0,
+            'Aplicación Móvil': 1.1,
+            'Software Empresarial': 1.2,
+            'Infraestructura Cloud': 0.9,
+            'Consultoría Técnica': 0.7
+        };
+
         const defectsPerHour = defectRates[inputs.complejidad] || 0.05;
-        const totalDefects = defectsPerHour * horasEstimadas;
+        const typeMult = typeMultipliers[inputs.tipoProyecto] || 1.0;
+        const totalDefects = defectsPerHour * horasEstimadas * typeMult;
 
         // 4. Generate Curve Points
         const data = [];
@@ -99,6 +109,20 @@ const RayleighModel = () => {
                             onChange={(e) => setInputs({ ...inputs, duracionSemanas: Number(e.target.value) })}
                             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
                         />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Proyecto</label>
+                        <select
+                            value={inputs.tipoProyecto}
+                            onChange={(e) => setInputs({ ...inputs, tipoProyecto: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                        >
+                            <option value="Desarrollo Web">Desarrollo Web</option>
+                            <option value="Aplicación Móvil">Aplicación Móvil</option>
+                            <option value="Software Empresarial">Software Empresarial</option>
+                            <option value="Infraestructura Cloud">Infraestructura Cloud</option>
+                            <option value="Consultoría Técnica">Consultoría Técnica</option>
+                        </select>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Complejidad</label>
@@ -184,7 +208,7 @@ const RayleighModel = () => {
                             <h3 className="text-lg font-bold mb-4 text-gray-800">Curva de Descubrimiento de Defectos (Cuándo)</h3>
                             <div className="h-96">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={results.data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                    <LineChart data={results.data} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                         <XAxis dataKey="semana" type="number" domain={['dataMin', 'dataMax']} label={{ value: 'Semanas', position: 'insideBottom', offset: -5 }} />
                                         <YAxis />
