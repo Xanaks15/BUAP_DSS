@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, ReferenceLine } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, ReferenceLine, Brush } from 'recharts';
 import { Calculator, Play } from 'lucide-react';
 
 const RayleighModel = () => {
@@ -208,7 +208,10 @@ const RayleighModel = () => {
                             <h3 className="text-lg font-bold mb-4 text-gray-800">Curva de Descubrimiento de Defectos (Cuándo)</h3>
                             <div className="h-96">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={results.data} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
+                                    <LineChart
+                                        data={[{ semana: 0, defectos: 0, acumulado: 0 }, ...results.data]}
+                                        margin={{ top: 10, right: 30, left: 0, bottom: 20 }}
+                                    >
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                         <XAxis dataKey="semana" type="number" domain={['dataMin', 'dataMax']} label={{ value: 'Semanas', position: 'insideBottom', offset: -5 }} />
                                         <YAxis yAxisId="left" />
@@ -220,6 +223,7 @@ const RayleighModel = () => {
                                         <ReferenceLine yAxisId="left" x={Number(results.sigma)} stroke="#ea580c" strokeDasharray="3 3" label={{ value: `σ: ${results.sigma}`, position: 'top', fill: '#ea580c' }} />
                                         <Line yAxisId="left" type="monotone" dataKey="defectos" name="Defectos por Semana" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
                                         <Line yAxisId="right" type="monotone" dataKey="acumulado" name="Defectos Acumulados" stroke="#9333ea" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                                        <Brush dataKey="semana" height={30} stroke="#8884d8" />
                                     </LineChart>
                                 </ResponsiveContainer>
                             </div>
