@@ -70,7 +70,8 @@ const BalancedScorecard = () => {
             barColor: "#9333EA",
             chartData: [
                 { name: 'Defectos (Prom)', Actual: metrics.internal.avg_defects, Meta: 25 },
-                { name: 'Tareas OK (%)', Actual: metrics.internal.tasks_completed_pct, Meta: 90 }
+                { name: 'Tareas OK (%)', Actual: metrics.internal.tasks_completed_pct, Meta: 90 },
+                { name: 'Def. Críticos (%)', Actual: metrics.internal.critical_defects_pct, Meta: 5 }
             ]
         },
         {

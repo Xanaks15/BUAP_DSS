@@ -292,6 +292,11 @@ def get_okr_metrics(db: Session = Depends(get_db)):
         total_tasks_plan = sum(p.tareas_planificadas or 0 for p in projects)
         total_tasks_done = sum(p.tareas_completadas or 0 for p in projects)
         tasks_completed_pct = (total_tasks_done / total_tasks_plan * 100) if total_tasks_plan > 0 else 0
+        
+        # New Metric: Critical Defects % (Goal < 5%)
+        critical_defects_count = db.query(func.count(FactDefecto.defecto_id))\
+            .filter(FactDefecto.severidad.in_(['Critico', 'Alta'])).scalar() or 0
+        critical_defects_pct = (critical_defects_count / total_defects_count * 100) if total_defects_count > 0 else 0
 
         # --- Learning ---
         total_ev_val = 0
@@ -320,7 +325,8 @@ def get_okr_metrics(db: Session = Depends(get_db)):
             },
             "internal": {
                 "avg_defects": round(avg_defects, 1),
-                "tasks_completed_pct": round(tasks_completed_pct, 1)
+                "tasks_completed_pct": round(tasks_completed_pct, 1),
+                "critical_defects_pct": round(critical_defects_pct, 1)
             },
             "learning": {
                 "productivity_pct": round(cpi_pct, 1),
