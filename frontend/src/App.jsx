@@ -49,7 +49,7 @@ function App() {
                         <WelcomeGuard>
                             <Layout>
                                 <Routes>
-                                    <Route path="/" element={<Dashboard />} />
+                                    <Route path="/" element={<Navigate to="/welcome" replace />} />
                                     <Route path="/dashboard" element={<Dashboard />} />
                                     <Route path="/bsc" element={<BalancedScorecard />} />
                                     <Route
