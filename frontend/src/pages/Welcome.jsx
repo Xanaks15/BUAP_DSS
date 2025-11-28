@@ -13,11 +13,11 @@ const Welcome = () => {
         navigate('/dashboard');
     };
 
-    const MISSION_SHORT = "Desarrollar soluciones de software de alta calidad que optimicen procesos con innovación, eficiencia y mejora continua...";
-    const MISSION_FULL = "Desarrollar soluciones de software de alta calidad que optimicen procesos con innovación, eficiencia y mejora continua; sostenibles, escalables y alineadas al negocio, promoviendo trazabilidad, colaboración interdisciplinaria y uso ético de los datos.";
+    const MISSION_SHORT = "Desarrollar soluciones de software de alta calidad que optimicen los procesos de nuestros clientes mediante la innovación tecnológica...";
+    const MISSION_FULL = "Desarrollar soluciones de software de alta calidad que optimicen los procesos de nuestros clientes mediante la innovación tecnológica, la eficiencia operativa y la mejora continua; ofreciendo productos sostenibles, escalables y alineados con las necesidades de negocio mientras se promueve la trazabilidad, la colaboración interdisciplinaria y el uso ético de los datos.";
 
-    const VISION_SHORT = "Ser líderes en software inteligente para la transformación digital con soluciones confiables, medibles y centradas en datos...";
-    const VISION_FULL = "Ser líderes en software inteligente para la transformación digital con soluciones confiables, medibles y centradas en datos; integrando analítica de desempeño, gestión del conocimiento y automatización para impulsar la estrategia hacia la excelencia y la innovación sostenible.";
+    const VISION_SHORT = "Ser una empresa líder en el desarrollo de software inteligente que impulse la transformación digital a través de soluciones confiables...";
+    const VISION_FULL = "Ser una empresa líder en el desarrollo de software inteligente que impulse la transformación digital a través de soluciones confiables, medibles y centradas en la toma de decisiones basadas en datos. Aspiramos a consolidarnos como un referente en la creación de plataformas donde la analítica de desempeño, la gestión del conocimiento y la automatización se integren para orientar la estrategia empresarial hacia la excelencia y la innovación sostenible.";
 
     return (
         <div className="h-screen overflow-hidden bg-white font-sans text-gray-900 flex flex-col">

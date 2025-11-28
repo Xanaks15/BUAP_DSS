@@ -38,7 +38,14 @@ export const getProjectQuality = async (projectId) => {
 };
 
 export const predictDefects = async (data) => {
-    const response = await api.post('/predictions/predict', data, {
+    const response = await api.post('/predictions/rayleigh', data, {
+        headers: { 'X-Role': 'ProjectManager' }
+    });
+    return response.data;
+};
+
+export const predictDefectsEnhanced = async (data) => {
+    const response = await api.post('/predictions/rayleigh/enhanced', data, {
         headers: { 'X-Role': 'ProjectManager' }
     });
     return response.data;

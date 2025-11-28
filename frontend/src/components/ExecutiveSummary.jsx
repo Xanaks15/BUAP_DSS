@@ -32,7 +32,7 @@ const ExecutiveSummary = ({ metrics }) => {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-xl font-bold text-corporate-dark border-b pb-2">1. Vista Ejecutiva del Proyecto</h2>
+
 
             {/* KPI Widgets Carousel - 3 Columns now */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
