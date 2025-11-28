@@ -89,6 +89,179 @@ def predict_defects(input_data: RayleighInput, db: Session = Depends(get_db)):
     
     return result
 
+class EnhancedRayleighInput(RayleighInput):
+    proyectoId: int = None # Optional, to fetch real KPIs if project exists
+
+def get_historical_calibration(db: Session, project_type: str):
+    """
+    Get historical defect rate and average sigma (peak time) for a project type.
+    """
+    # 1. Defect Rate
+    tipo_proj_id = db.query(DimTipoProyecto.tipo_proyecto_id)\
+        .filter(DimTipoProyecto.nombre == project_type).scalar()
+        
+    query = db.query(
+        func.sum(FactProyecto.horas_trabajadas).label("total_hours"),
+        func.count(FactDefecto.defecto_id).label("total_defects")
+    ).outerjoin(FactDefecto, FactProyecto.proyecto_id == FactDefecto.proyecto_id)
+    
+    if tipo_proj_id:
+        query = query.filter(FactProyecto.tipo_proyecto_id == tipo_proj_id)
+        
+    result = query.first()
+    
+    historical_rate = 0.05 # Default fallback
+    if result and result.total_hours and result.total_hours > 0:
+        historical_rate = result.total_defects / float(result.total_hours)
+
+    # 2. Average Sigma (Peak Time)
+    # Heuristic: We don't store "peak time" directly, but we can approximate it 
+    # if we had time-series data. For now, we'll use a heuristic based on project duration.
+    # Or we could calculate the week with max defects for each project and average it.
+    
+    # Let's try to find the average week of max defects for past projects
+    # This is complex in SQL. We'll stick to a simpler heuristic for now:
+    # "Historical projects of this type usually peak at 40% of duration"
+    historical_peak_ratio = 0.4 
+    
+    return historical_rate, historical_peak_ratio
+
+def calculate_dynamic_adjustments(db: Session, project_id: int):
+    """
+    Calculate multipliers for K (Total Defects) and Sigma based on real KPIs.
+    """
+    if not project_id:
+        return 1.0, 1.0, [], "No project ID provided. Using standard prediction."
+        
+    project = db.query(FactProyecto).filter(FactProyecto.proyecto_id == project_id).first()
+    if not project:
+        return 1.0, 1.0, [], "Project not found. Using standard prediction."
+        
+    k_multiplier = 1.0
+    sigma_multiplier = 1.0
+    explanations = []
+    
+    # 1. Tasks Delayed
+    # If > 10% tasks are delayed, project is struggling. Increase K and Sigma.
+    total_tasks = float(project.tareas_planificadas or 1)
+    delayed_tasks = float(project.tareas_retrasadas or 0)
+    delayed_pct = delayed_tasks / total_tasks
+    
+    if delayed_pct > 0.10:
+        k_multiplier += 0.15
+        sigma_multiplier += 0.10
+        explanations.append(f"High task delay ({delayed_pct:.1%}) -> Increased expected defects (+15%) and delayed peak.")
+        
+    # 2. Productivity (EV / Hours Real)
+    # If productivity is low, project takes longer, defects might spread out.
+    # Assume standard productivity is around 1.0 (if EV and Hours are comparable units, which depends on implementation)
+    # Let's use CPI instead as a proxy for efficiency: EV / AC
+    ev = float(project.tareas_completadas or 0) / float(project.tareas_planificadas or 1) * float(project.monto_planificado or 0)
+    ac = float(project.monto_real or 1)
+    cpi = ev / ac if ac > 0 else 0
+    
+    if cpi < 0.85:
+        sigma_multiplier += 0.15
+        explanations.append(f"Low Cost Efficiency (CPI {cpi:.2f}) -> Curve flattened and peak delayed.")
+        
+    # 3. Critical Defects
+    # If we already found many critical defects, the model should be more pessimistic.
+    crit_defects = db.query(func.count(FactDefecto.defecto_id))\
+        .join(DimTipoDefecto, FactDefecto.tipo_defecto_id == DimTipoDefecto.tipo_defecto_id)\
+        .filter(FactDefecto.proyecto_id == project_id)\
+        .filter(FactDefecto.severidad.in_(['Critico', 'Alta']))\
+        .scalar() or 0
+        
+    if crit_defects > 5:
+        k_multiplier += 0.20
+        explanations.append(f"High volume of critical defects ({crit_defects}) -> Significantly increased total defect estimate.")
+
+    # 4. Schedule Variance (Time)
+    # Check if we are behind schedule
+    # Simple check: Real Start vs Plan Start, or just use the delay days metric if available
+    # We'll use a placeholder logic here assuming we could calculate 'days_late'
+    # if days_late > 10: sigma_multiplier += 0.1
+    
+    if not explanations:
+        explanations.append("Project is on track. Standard prediction applies.")
+        
+    return k_multiplier, sigma_multiplier, explanations, " | ".join(explanations)
+
+def calculate_risk_index(k_mult, sigma_mult, explanations):
+    # Base score 0 (Low Risk)
+    score = 0
+    
+    # Deviations increase risk
+    if k_mult > 1.0: score += (k_mult - 1.0) * 100 # e.g. 1.2 -> +20
+    if sigma_mult > 1.0: score += (sigma_mult - 1.0) * 100
+    
+    # Critical keywords in explanations
+    for exp in explanations:
+        if "Critical" in exp: score += 30
+        if "High task delay" in exp: score += 20
+        
+    # Cap at 100
+    score = min(100, score)
+    
+    label = "Low"
+    if score > 30: label = "Medium"
+    if score > 60: label = "High"
+    
+    return score, label
+
+@router.post("/rayleigh/enhanced")
+def predict_defects_enhanced(input_data: EnhancedRayleighInput, db: Session = Depends(get_db)):
+    """
+    Enhanced Rayleigh Model with:
+    1. Automatic Calibration (Historical Data)
+    2. Dynamic Adjustments (Real-time KPIs)
+    3. Risk Analysis
+    """
+    # 1. Base Parameters (Calibrated)
+    hist_rate, hist_peak_ratio = get_historical_calibration(db, input_data.tipoProyecto)
+    
+    # Apply complexity factor to rate
+    complexity_multipliers = {"baja": 0.8, "media": 1.0, "alta": 1.2}
+    base_rate = hist_rate * complexity_multipliers.get(input_data.complejidad, 1.0)
+    
+    base_total_defects = int(input_data.horasEstimadas * base_rate)
+    base_sigma = input_data.duracionSemanas / 2.5 # Default sigma
+    
+    # 2. Dynamic Adjustments (KPIs)
+    k_mult, sigma_mult, explanations, explanation_text = calculate_dynamic_adjustments(db, input_data.proyectoId)
+    
+    # 3. Generate Curves
+    # Standard (Original)
+    original_curve = model.fit_predict(base_total_defects, base_sigma, input_data.duracionSemanas)
+    
+    # Enhanced (Adjusted)
+    enhanced_curve = model.fit_predict_enhanced(
+        base_total_defects, 
+        base_sigma, 
+        input_data.duracionSemanas,
+        k_multiplier=k_mult,
+        sigma_multiplier=sigma_mult
+    )
+    
+    # 4. Risk Analysis
+    risk_score, risk_label = calculate_risk_index(k_mult, sigma_mult, explanations)
+    
+    return {
+        "original_prediction": original_curve,
+        "enhanced_prediction": enhanced_curve,
+        "adjustments": {
+            "k_multiplier": round(k_mult, 2),
+            "sigma_multiplier": round(sigma_mult, 2),
+            "historical_rate_used": round(base_rate, 5)
+        },
+        "risk_analysis": {
+            "score": int(risk_score),
+            "level": risk_label,
+            "explanation": explanation_text,
+            "factors": explanations
+        }
+    }
+
 @router.post("/monte-carlo")
 def monte_carlo_simulation(input_data: MonteCarloInput, db: Session = Depends(get_db)):
     # 1. Get Historical Average Defects (Real Data from DW)

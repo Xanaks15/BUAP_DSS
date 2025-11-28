@@ -44,4 +44,30 @@ class RayleighModel:
             ]
         }
 
+    def fit_predict_enhanced(self, total_defects: int, peak_time: float, duration_weeks: int, 
+                           k_multiplier: float = 1.0, sigma_multiplier: float = 1.0) -> Dict[str, Any]:
+        """
+        Enhanced prediction with dynamic adjustments.
+        """
+        # Apply multipliers
+        adjusted_sigma = peak_time * sigma_multiplier
+        adjusted_total_defects = int(total_defects * k_multiplier)
+        
+        # Generate curve with adjusted values
+        weeks = np.arange(1, duration_weeks + 1)
+        cumulative_prob = rayleigh.cdf(weeks, scale=adjusted_sigma)
+        cumulative_defects = adjusted_total_defects * cumulative_prob
+        defects_per_week = np.diff(cumulative_defects, prepend=0)
+        
+        return {
+            "original_sigma": peak_time,
+            "adjusted_sigma": round(adjusted_sigma, 2),
+            "original_total_defects": total_defects,
+            "adjusted_total_defects": adjusted_total_defects,
+            "weekly_predictions": [
+                {"week": int(w), "defects": round(d, 2), "cumulative": round(c, 2)}
+                for w, d, c in zip(weeks, defects_per_week, cumulative_defects)
+            ]
+        }
+
 model = RayleighModel()
