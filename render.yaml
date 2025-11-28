@@ -9,7 +9,6 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.4
-      # Placeholder vars - User must fill these in Render Dashboard
       - key: SSD_HOST
         sync: false
       - key: SSD_USER
@@ -21,21 +20,16 @@ services:
       - key: SSD_PORT
         sync: false
 
-    # Frontend Service
+  # Frontend Service
   - type: web
     name: buap-dss-frontend
     env: node
     region: oregon
     buildCommand: cd frontend && npm install && npm run build
     startCommand: npx serve -s frontend/dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
     envVars:
       - key: VITE_API_URL
         fromService:
           type: web
           name: buap-dss-backend
-          property: url
-
+          property: hostport
