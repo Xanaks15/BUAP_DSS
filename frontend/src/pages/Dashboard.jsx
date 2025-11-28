@@ -79,7 +79,9 @@ const Dashboard = () => {
                     cost_real_vs_planned_pct: data.cost_real_vs_planned_pct || 0,
                     avg_employees_assigned: data.avg_employees_assigned || 0,
                     projects_by_status: data.projects_by_status || {},
+                    projects_by_status: data.projects_by_status || {},
                     productivity: data.productivity || 0,
+                    total_projects: data.total_projects || 0,
 
                     // New metrics from backend
                     avg_roi: data.avg_roi || 0,
@@ -128,7 +130,9 @@ const Dashboard = () => {
                     cost_real_vs_planned_pct: data.cost_real_vs_planned_pct || 0,
                     avg_employees_assigned: data.avg_employees_assigned || 0,
                     projects_by_status: data.projects_by_status || {},
+                    projects_by_status: data.projects_by_status || {},
                     productivity: data.productivity || 0,
+                    total_projects: data.total_projects || 0,
 
                     total_hours_planned: data.total_hours_planned,
                     total_hours_real: data.total_hours_real

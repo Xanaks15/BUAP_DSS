@@ -211,14 +211,15 @@ const RayleighModel = () => {
                                     <LineChart data={results.data} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                         <XAxis dataKey="semana" type="number" domain={['dataMin', 'dataMax']} label={{ value: 'Semanas', position: 'insideBottom', offset: -5 }} />
-                                        <YAxis />
+                                        <YAxis yAxisId="left" />
+                                        <YAxis yAxisId="right" orientation="right" />
                                         <Tooltip
                                             contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                         />
                                         <Legend verticalAlign="top" height={36} />
-                                        <ReferenceLine x={Number(results.sigma)} stroke="#ea580c" strokeDasharray="3 3" label={{ value: `σ: ${results.sigma}`, position: 'top', fill: '#ea580c' }} />
-                                        <Line type="monotone" dataKey="defectos" name="Defectos por Semana" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                                        <Line type="monotone" dataKey="acumulado" name="Defectos Acumulados" stroke="#9333ea" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                                        <ReferenceLine yAxisId="left" x={Number(results.sigma)} stroke="#ea580c" strokeDasharray="3 3" label={{ value: `σ: ${results.sigma}`, position: 'top', fill: '#ea580c' }} />
+                                        <Line yAxisId="left" type="monotone" dataKey="defectos" name="Defectos por Semana" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                                        <Line yAxisId="right" type="monotone" dataKey="acumulado" name="Defectos Acumulados" stroke="#9333ea" strokeWidth={2} strokeDasharray="5 5" dot={false} />
                                     </LineChart>
                                 </ResponsiveContainer>
                             </div>
