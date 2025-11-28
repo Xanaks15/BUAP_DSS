@@ -20,7 +20,8 @@ origins = [
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Temporarily allow all to ensure connection works
+    allow_origins=["http://localhost:5173"], # Localhost for development
+    allow_origin_regex="https://.*\.vercel\.app", # Allow all Vercel subdomains (production & previews)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
