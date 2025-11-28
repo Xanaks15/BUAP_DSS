@@ -71,6 +71,8 @@ const Dashboard = () => {
                     spi: parseFloat(spi.toFixed(2)),
                     cpi: parseFloat(cpi.toFixed(2)),
                     ev: total_ev,
+                    pv: total_pv,
+                    ac: total_ac,
                     tasks_completed_pct: data.tasks_completed_pct || 0,
                     tasks_delayed_pct: data.tasks_delayed_pct || 0,
                     tasks_not_completed_pct: data.tasks_not_completed_pct || 0,

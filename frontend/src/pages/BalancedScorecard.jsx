@@ -1,92 +1,85 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import api from '../services/api';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const PerspectiveCard = ({ title, objectives, color }) => (
+const PerspectiveCard = ({ title, color, chartData, barColor }) => (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <h3 className={`text-lg font-bold mb-4 ${color}`}>{title}</h3>
-        <div className="space-y-6">
-            {objectives.map((obj, idx) => (
-                <div key={idx} className="space-y-3">
-                    <h4 className="font-medium text-gray-800">{obj.name}</h4>
-                    <div className="space-y-2">
-                        {obj.krs.map((kr, kIdx) => (
-                            <div key={kIdx} className="bg-gray-50 p-3 rounded-lg text-sm">
-                                <div className="flex justify-between mb-1">
-                                    <span className="text-gray-600">{kr.name}</span>
-                                    <span className={`font-semibold ${kr.status === 'success' ? 'text-green-600' : kr.status === 'warning' ? 'text-yellow-600' : 'text-red-600'}`}>
-                                        {kr.value} <span className="text-xs text-gray-400 font-normal">(Meta: {kr.goal})</span>
-                                    </span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                    <div
-                                        className={`h-1.5 rounded-full ${kr.status === 'success' ? 'bg-green-500' : kr.status === 'warning' ? 'bg-yellow-500' : 'bg-red-500'}`}
-                                        style={{ width: kr.progress }}
-                                    ></div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            ))}
+
+        {/* Chart Section */}
+        <div className="h-64 mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                    <XAxis type="number" />
+                    <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 11 }} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="Actual" fill={barColor} radius={[0, 4, 4, 0]} barSize={20} />
+                    <Bar dataKey="Meta" fill="#6B7280" radius={[0, 4, 4, 0]} barSize={20} />
+                </BarChart>
+            </ResponsiveContainer>
         </div>
     </div>
 );
 
 const BalancedScorecard = () => {
-    // Mock data based on specification
+    const [metrics, setMetrics] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        api.get('/dashboard/kpis/okrs')
+            .then(res => {
+                setMetrics(res.data);
+                setLoading(false);
+            })
+            .catch(err => {
+                console.error("Error fetching OKRs:", err);
+                setLoading(false);
+            });
+    }, []);
+
+    if (loading) return <div className="text-center py-10">Cargando Scorecard...</div>;
+    if (!metrics) return <div className="text-center py-10">No hay datos disponibles.</div>;
+
+    // Construct Perspectives Data
     const perspectives = [
         {
             title: "Financiera",
             color: "text-blue-600",
-            objectives: [
-                {
-                    name: "F1. Asegurar la rentabilidad de los proyectos",
-                    krs: [
-                        { name: "F1.1 ROI promedio ≥ 12%", value: "15%", goal: "12%", progress: "100%", status: "success" },
-                        { name: "F1.2 Desviación de costos ≤ 10%", value: "8%", goal: "10%", progress: "100%", status: "success" },
-                        { name: "F1.3 ≥ 85% proyectos con ganancia > 0", value: "82%", goal: "85%", progress: "96%", status: "warning" }
-                    ]
-                }
+            barColor: "#2563EB",
+            chartData: [
+                { name: 'ROI (%)', Actual: metrics.financial.roi, Meta: 12 },
+                { name: 'Desv. Costo (%)', Actual: metrics.financial.cost_dev, Meta: 10 },
+                { name: 'Proy. Rentables (%)', Actual: metrics.financial.profitable_projects_pct, Meta: 85 }
             ]
         },
         {
             title: "Cliente",
             color: "text-green-600",
-            objectives: [
-                {
-                    name: "C1. Entregar productos confiables y a tiempo",
-                    krs: [
-                        { name: "C1.1 ≥ 90% entregados a tiempo", value: "88%", goal: "90%", progress: "97%", status: "warning" },
-                        { name: "C1.2 ≥ 95% sin defectos críticos", value: "92%", goal: "95%", progress: "96%", status: "warning" },
-                        { name: "C1.3 ≥ 80% con retrasos ≤ 20%", value: "75%", goal: "80%", progress: "93%", status: "red" }
-                    ]
-                }
+            barColor: "#16A34A",
+            chartData: [
+                { name: 'A Tiempo (%)', Actual: metrics.customer.on_time_pct, Meta: 90 },
+                { name: 'Sin Def. Crit. (%)', Actual: metrics.customer.defect_free_pct, Meta: 95 },
+                { name: 'Retraso OK (%)', Actual: metrics.customer.acceptable_delay_pct, Meta: 80 }
             ]
         },
         {
             title: "Procesos Internos",
             color: "text-purple-600",
-            objectives: [
-                {
-                    name: "P1. Optimizar desarrollo y pruebas",
-                    krs: [
-                        { name: "P1.1 Defectos promedio ≤ 25", value: "22", goal: "25", progress: "100%", status: "success" },
-                        { name: "P1.2 ≥ 90% tareas completadas", value: "94%", goal: "90%", progress: "100%", status: "success" },
-                        { name: "P1.3 Pico defectos en primer 40%", value: "35%", goal: "40%", progress: "100%", status: "success" }
-                    ]
-                }
+            barColor: "#9333EA",
+            chartData: [
+                { name: 'Defectos (Prom)', Actual: metrics.internal.avg_defects, Meta: 25 },
+                { name: 'Tareas OK (%)', Actual: metrics.internal.tasks_completed_pct, Meta: 90 }
             ]
         },
         {
             title: "Aprendizaje y Crecimiento",
             color: "text-orange-600",
-            objectives: [
-                {
-                    name: "A1. Fortalecer capacidad del equipo",
-                    krs: [
-                        { name: "A1.1 Productividad horas ≥ 85%", value: "87%", goal: "85%", progress: "100%", status: "success" },
-                        { name: "A1.2 Uso modelo predictivo ≥ 70%", value: "60%", goal: "70%", progress: "85%", status: "red" }
-                    ]
-                }
+            barColor: "#EA580C",
+            chartData: [
+                { name: 'Productividad (%)', Actual: metrics.learning.productivity_pct, Meta: 85 },
+                { name: 'Uso Modelo (%)', Actual: metrics.learning.model_usage_pct, Meta: 70 }
             ]
         }
     ];
@@ -95,7 +88,7 @@ const BalancedScorecard = () => {
         <div className="space-y-6">
             <header>
                 <h2 className="text-2xl font-bold text-gray-800">Balanced Scorecard</h2>
-                <p className="text-gray-500">Monitoreo de objetivos estratégicos y OKRs</p>
+                <p className="text-gray-500">Monitoreo de objetivos estratégicos y OKRs (Datos Reales)</p>
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

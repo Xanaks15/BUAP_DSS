@@ -11,7 +11,7 @@ SSD_USER = os.getenv("SSD_USER", "root")
 SSD_PASSWORD = os.getenv("SSD_PASSWORD", "cRUltTthzitfncdZCrMTwHAHjbrGMHQk")
 SSD_HOST = os.getenv("SSD_HOST", "shinkansen.proxy.rlwy.net")
 SSD_PORT = os.getenv("SSD_PORT", "57709")
-SSD_DB = os.getenv("SSD_DB", "railway")
+SSD_DB = os.getenv("SSD_DB", os.getenv("SSD_NAME", "railway"))
 
 SQLALCHEMY_DATABASE_URL = f"mysql+mysqlconnector://{SSD_USER}:{SSD_PASSWORD}@{SSD_HOST}:{SSD_PORT}/{SSD_DB}"
 

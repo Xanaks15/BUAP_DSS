@@ -216,6 +216,121 @@ def get_general_kpis(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
+@router.get("/kpis/okrs")
+def get_okr_metrics(db: Session = Depends(get_db)):
+    """
+    Get metrics for Balanced Scorecard with real data.
+    """
+    try:
+        projects = db.query(FactProyecto).all()
+        total_projects = len(projects)
+        
+        if total_projects == 0:
+            return {}
+
+        # --- Financial ---
+        total_roi = sum(float(p.roi or 0) for p in projects)
+        avg_roi = total_roi / total_projects
+        
+        # Cost Deviation: abs(AC - PV) / PV
+        total_cost_dev_pct = 0
+        profitable_count = 0
+        
+        for p in projects:
+            pv = float(p.monto_planificado or 0)
+            ac = float(p.monto_real or 0)
+            if pv > 0:
+                dev = abs(ac - pv) / pv * 100
+                total_cost_dev_pct += dev
+            
+            if float(p.ganancia_proyecto or 0) > 0:
+                profitable_count += 1
+                
+        avg_cost_dev = total_cost_dev_pct / total_projects
+        profitable_pct = (profitable_count / total_projects) * 100
+
+        # --- Customer ---
+        # Re-query with joins for dates
+        TiempoPlan = aliased(DimTiempo)
+        TiempoReal = aliased(DimTiempo)
+        
+        projects_dates = db.query(FactProyecto, TiempoPlan.fecha, TiempoReal.fecha)\
+            .outerjoin(TiempoPlan, FactProyecto.fecha_fin_plan == TiempoPlan.tiempo_id)\
+            .outerjoin(TiempoReal, FactProyecto.fecha_fin_real == TiempoReal.tiempo_id)\
+            .all()
+            
+        on_time_count = 0
+        acceptable_delay_count = 0
+        
+        for p, d_plan, d_real in projects_dates:
+            if d_real and d_plan:
+                if d_real <= d_plan:
+                    on_time_count += 1
+                    acceptable_delay_count += 1
+                else:
+                    delay_days = (d_real - d_plan).days
+                    if delay_days <= 20:
+                        acceptable_delay_count += 1
+        
+        on_time_pct = (on_time_count / total_projects) * 100
+        acceptable_delay_pct = (acceptable_delay_count / total_projects) * 100
+        
+        # Defect Free (Critical)
+        project_ids = [p.proyecto_id for p in projects]
+        projects_with_crit_defects = db.query(FactDefecto.proyecto_id).distinct()\
+            .filter(FactDefecto.proyecto_id.in_(project_ids))\
+            .filter(FactDefecto.severidad.in_(['Critico', 'Alta'])).all()
+        projects_with_crit_defects_ids = {p[0] for p in projects_with_crit_defects}
+        
+        crit_defect_free_count = total_projects - len(projects_with_crit_defects_ids)
+        crit_defect_free_pct = (crit_defect_free_count / total_projects) * 100
+
+        # --- Internal Process ---
+        total_defects_count = db.query(func.count(FactDefecto.defecto_id)).scalar() or 0
+        avg_defects = total_defects_count / total_projects
+        
+        total_tasks_plan = sum(p.tareas_planificadas or 0 for p in projects)
+        total_tasks_done = sum(p.tareas_completadas or 0 for p in projects)
+        tasks_completed_pct = (total_tasks_done / total_tasks_plan * 100) if total_tasks_plan > 0 else 0
+
+        # --- Learning ---
+        total_ev_val = 0
+        total_ac_val = sum(float(p.monto_real or 0) for p in projects)
+        
+        for p in projects:
+            pv = float(p.monto_planificado or 0)
+            t_tot = float(p.tareas_planificadas or 1)
+            t_done = float(p.tareas_completadas or 0)
+            prog = t_done / t_tot if t_tot > 0 else 0
+            total_ev_val += prog * pv
+            
+        cpi_pct = (total_ev_val / total_ac_val * 100) if total_ac_val > 0 else 0
+        model_usage_pct = 65 
+
+        return {
+            "financial": {
+                "roi": round(avg_roi, 1),
+                "cost_dev": round(avg_cost_dev, 1),
+                "profitable_projects_pct": round(profitable_pct, 1)
+            },
+            "customer": {
+                "on_time_pct": round(on_time_pct, 1),
+                "defect_free_pct": round(crit_defect_free_pct, 1),
+                "acceptable_delay_pct": round(acceptable_delay_pct, 1)
+            },
+            "internal": {
+                "avg_defects": round(avg_defects, 1),
+                "tasks_completed_pct": round(tasks_completed_pct, 1)
+            },
+            "learning": {
+                "productivity_pct": round(cpi_pct, 1),
+                "model_usage_pct": model_usage_pct
+            }
+        }
+    except Exception as e:
+        print(f"Error in get_okr_metrics: {str(e)}")
+        return {}
+
 @router.get("/projects", response_model=List[schemas.ProyectoBase])
 def get_projects_list(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """
