@@ -24,7 +24,7 @@ class MonteCarloInput(BaseModel):
     tipoProyecto: str = "Desarrollo Web"
 
 class EnhancedRayleighInput(RayleighInput):
-    proyectoId: Optional[int] = None # Optional, to fetch real KPIs if project exists
+    pass
 
 @router.post("/rayleigh")
 def predict_defects(input_data: RayleighInput, db: Session = Depends(get_db)):
@@ -153,154 +153,13 @@ def get_historical_calibration(db: Session, project_type: str):
     
     return historical_rate, historical_peak_ratio, avg_team_size, phase_dist
 
-def analyze_sdlc_risk(db: Session, project_id: int, historical_dist: Dict[str, float]):
-    """
-    Analyze if the project is finding enough defects for its current phase.
-    """
-    # 1. Determine Current Phase (Heuristic or DB)
-    # Ideally FactProyecto would have 'fase_actual_id', but we'll infer from defects or use a placeholder
-    # Let's check the most recent defect's phase
-    last_defect = db.query(DimFaseSDLC.nombre_fase)\
-        .join(FactDefecto, DimFaseSDLC.fase_sdlc_id == FactDefecto.fase_id)\
-        .filter(FactDefecto.proyecto_id == project_id)\
-        .order_by(FactDefecto.tiempo_id.desc())\
-        .first()
-        
-    current_phase = last_defect[0] if last_defect else "Codificación" # Default to Coding if unknown
-    
-    # 2. Calculate Current Defect Distribution
-    total_defects = db.query(func.count(FactDefecto.defecto_id))\
-        .filter(FactDefecto.proyecto_id == project_id).scalar() or 0
-        
-    if total_defects == 0:
-        return 0.0, 0.0, [] # No defects yet, hard to judge risk unless late in project
-        
-    # Check defects found in current phase
-    current_phase_defects = db.query(func.count(FactDefecto.defecto_id))\
-        .join(DimFaseSDLC, FactDefecto.fase_id == DimFaseSDLC.fase_sdlc_id)\
-        .filter(FactDefecto.proyecto_id == project_id)\
-        .filter(DimFaseSDLC.nombre_fase == current_phase)\
-        .scalar() or 0
-        
-    current_phase_pct = current_phase_defects / total_defects
-    expected_pct = historical_dist.get(current_phase, 0.30)
-    
-    sigma_adj = 0.0
-    k_adj = 0.0
-    explanations = []
-    
-    # 3. Risk Logic: "Silent Phase"
-    # If we are in Coding/Testing and finding significantly fewer defects than expected
-    if current_phase in ["Codificación", "Pruebas"]:
-        if current_phase_pct < (expected_pct * 0.5):
-            # We are finding < 50% of expected defects for this phase
-            sigma_adj += 0.20 # Delay peak significantly
-            k_adj += 0.15 # Assume hidden defects
-            explanations.append(f"Silent Phase Risk: In {current_phase} but defect discovery ({current_phase_pct:.1%}) is far below historical norm ({expected_pct:.1%}).")
-            
-    return k_adj, sigma_adj, explanations
 
-def calculate_dynamic_adjustments(db: Session, project_id: int, historical_avg_team_size: float, historical_phase_dist: Dict[str, float]):
-    """
-    Calculate multipliers for K (Total Defects) and Sigma based on real KPIs.
-    """
-    if not project_id:
-        return 1.0, 1.0, [], "No project ID provided. Using standard prediction."
-        
-    project = db.query(FactProyecto).filter(FactProyecto.proyecto_id == project_id).first()
-    if not project:
-        return 1.0, 1.0, [], "Project not found. Using standard prediction."
-        
-    k_multiplier = 1.0
-    sigma_multiplier = 1.0
-    explanations = []
-    
-    # --- EXISTING FACTORS ---
-    
-    # 1. Tasks Delayed
-    total_tasks = float(project.tareas_planificadas or 1)
-    delayed_tasks = float(project.tareas_retrasadas or 0)
-    delayed_pct = delayed_tasks / total_tasks
-    
-    if delayed_pct > 0.10:
-        k_multiplier += 0.15
-        sigma_multiplier += 0.10
-        explanations.append(f"High task delay ({delayed_pct:.1%}) -> Increased expected defects (+15%) and delayed peak.")
-        
-    # 2. Productivity (CPI)
-    ev = float(project.tareas_completadas or 0) / float(project.tareas_planificadas or 1) * float(project.monto_planificado or 0)
-    ac = float(project.monto_real or 1)
-    cpi = ev / ac if ac > 0 else 0
-    
-    if cpi < 0.85:
-        sigma_multiplier += 0.15
-        explanations.append(f"Low Cost Efficiency (CPI {cpi:.2f}) -> Curve flattened and peak delayed.")
-        
-    # 3. Critical Defects
-    crit_defects = db.query(func.count(FactDefecto.defecto_id))\
-        .join(DimTipoDefecto, FactDefecto.tipo_defecto_id == DimTipoDefecto.tipo_defecto_id)\
-        .filter(FactDefecto.proyecto_id == project_id)\
-        .filter(FactDefecto.severidad.in_(['Critico', 'Alta']))\
-        .scalar() or 0
-        
-    if crit_defects > 5:
-        k_multiplier += 0.20
-        explanations.append(f"High volume of critical defects ({crit_defects}) -> Significantly increased total defect estimate.")
-
-    # --- NEW ADVANCED FACTORS ---
-
-    # 4. Team Density (Brooks' Law)
-    current_team_size = float(project.empleados_asignados or 0)
-    if current_team_size > (historical_avg_team_size * 1.5):
-        k_multiplier += 0.20
-        explanations.append(f"Large Team Size ({int(current_team_size)} vs avg {historical_avg_team_size:.1f}) -> High communication complexity (+20% defects).")
-    elif current_team_size > (historical_avg_team_size * 1.2):
-        k_multiplier += 0.10
-        explanations.append(f"Above Average Team Size ({int(current_team_size)} vs avg {historical_avg_team_size:.1f}) -> Increased communication complexity (+10% defects).")
-
-    # 5. SDLC Phase Risk
-    sdlc_k, sdlc_sigma, sdlc_exps = analyze_sdlc_risk(db, project_id, historical_phase_dist)
-    k_multiplier += sdlc_k
-    sigma_multiplier += sdlc_sigma
-    explanations.extend(sdlc_exps)
-
-    if not explanations:
-        explanations.append("Project is on track. Standard prediction applies.")
-        
-    return k_multiplier, sigma_multiplier, explanations, " | ".join(explanations)
-
-def calculate_risk_index(k_mult, sigma_mult, explanations):
-    # Base score 0 (Low Risk)
-    score = 0
-    
-    # Deviations increase risk
-    if k_mult > 1.0: score += (k_mult - 1.0) * 100 
-    if sigma_mult > 1.0: score += (sigma_mult - 1.0) * 100
-    
-    # Critical keywords in explanations
-    for exp in explanations:
-        if "Critical" in exp: score += 30
-        if "High task delay" in exp: score += 20
-        if "Silent Phase" in exp: score += 40 # High risk
-        if "Large Team" in exp: score += 15
-        
-    # Cap at 100
-    score = min(100, score)
-    
-    label = "Low"
-    if score > 30: label = "Medium"
-    if score > 60: label = "High"
-    
-    return score, label
 
 @router.post("/rayleigh/enhanced")
 def predict_defects_enhanced(input_data: EnhancedRayleighInput, db: Session = Depends(get_db)):
     """
     Enhanced Rayleigh Model with:
     1. Automatic Calibration (Historical Data)
-    2. Dynamic Adjustments (Real-time KPIs)
-    3. Risk Analysis
-    4. Advanced Factors (Team Density, SDLC Phases)
     """
     # 1. Base Parameters (Calibrated)
     hist_rate, hist_peak_ratio, hist_team_size, hist_phase_dist = get_historical_calibration(db, input_data.tipoProyecto)
@@ -312,44 +171,26 @@ def predict_defects_enhanced(input_data: EnhancedRayleighInput, db: Session = De
     base_total_defects = int(input_data.horasEstimadas * base_rate)
     base_sigma = input_data.duracionSemanas / 2.5 # Default sigma
     
-    # 2. Dynamic Adjustments (KPIs + Advanced Factors)
-    k_mult, sigma_mult, explanations, explanation_text = calculate_dynamic_adjustments(
-        db, 
-        input_data.proyectoId,
-        hist_team_size,
-        hist_phase_dist
-    )
-    
-    # 3. Generate Curves
+    # 2. Generate Curves
     # Standard (Original)
     original_curve = model.fit_predict(base_total_defects, base_sigma, input_data.duracionSemanas)
     
-    # Enhanced (Adjusted)
+    # Enhanced (Adjusted) - In this simplified version, it's the same as original but using historical calibration
+    # We keep the structure for frontend compatibility
     enhanced_curve = model.fit_predict_enhanced(
         base_total_defects, 
         base_sigma, 
         input_data.duracionSemanas,
-        k_multiplier=k_mult,
-        sigma_multiplier=sigma_mult
+        k_multiplier=1.0,
+        sigma_multiplier=1.0
     )
-    
-    # 4. Risk Analysis
-    risk_score, risk_label = calculate_risk_index(k_mult, sigma_mult, explanations)
     
     return {
         "original_prediction": original_curve,
         "enhanced_prediction": enhanced_curve,
         "adjustments": {
-            "k_multiplier": round(k_mult, 2),
-            "sigma_multiplier": round(sigma_mult, 2),
             "historical_rate_used": round(base_rate, 5),
             "historical_avg_team_size": round(hist_team_size, 1)
-        },
-        "risk_analysis": {
-            "score": int(risk_score),
-            "level": risk_label,
-            "explanation": explanation_text,
-            "factors": explanations
         }
     }
 
