@@ -1,52 +1,90 @@
 import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, ReferenceLine } from 'recharts';
-import { Calculator, Play, AlertTriangle, Info, TrendingUp, Users, Clock } from 'lucide-react';
-import { predictDefectsEnhanced } from '../services/api';
+import { Calculator, Play } from 'lucide-react';
 
 const RayleighModel = () => {
     const [inputs, setInputs] = useState({
         horasEstimadas: 1000,
         duracionSemanas: 12,
         complejidad: 'media',
-        tipoProyecto: 'Desarrollo Web',
-        proyectoId: null // Optional: Only for real-time monitoring
+        tipoProyecto: 'Desarrollo Web'
     });
 
     const [results, setResults] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [phaseDistribution, setPhaseDistribution] = useState([]);
 
-    const calculateRayleigh = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const data = await predictDefectsEnhanced(inputs);
-            setResults(data);
-        } catch (err) {
-            console.error("Error fetching prediction:", err);
-            setError("Error al conectar con el modelo inteligente. Verifique el backend.");
-        } finally {
-            setLoading(false);
-        }
-    };
+    const calculateRayleigh = () => {
+        const { horasEstimadas, duracionSemanas } = inputs;
 
-    // Helper to get risk color
-    const getRiskColor = (level) => {
-        switch (level) {
-            case 'High': return 'bg-red-100 text-red-800 border-red-200';
-            case 'Medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-            default: return 'bg-green-100 text-green-800 border-green-200';
+        // 1. Calculate Sigma
+        const sigma = duracionSemanas / 2.5;
+
+        // 2. Calculate Peak Time
+        const tPeak = sigma * Math.sqrt(2);
+
+        // 3. Estimate Total Defects (Calibration based on complexity)
+        const defectRates = {
+            baja: 0.03,
+            media: 0.05,
+            alta: 0.08
+        };
+
+        const typeMultipliers = {
+            'Desarrollo Web': 1.0,
+            'Aplicación Móvil': 1.1,
+            'Software Empresarial': 1.2,
+            'Infraestructura Cloud': 0.9,
+            'Consultoría Técnica': 0.7
+        };
+
+        const defectsPerHour = defectRates[inputs.complejidad] || 0.05;
+        const typeMult = typeMultipliers[inputs.tipoProyecto] || 1.0;
+        const totalDefects = defectsPerHour * horasEstimadas * typeMult;
+
+        // 4. Generate Curve Points
+        const data = [];
+        let cumulativeDefects = 0;
+
+        for (let t = 1; t <= duracionSemanas; t++) {
+            // PDF: f(t) = (t / sigma^2) * exp(-t^2 / 2sigma^2)
+            // We scale PDF by totalDefects to get defects per week
+            const pdf = (t / (sigma * sigma)) * Math.exp(-(t * t) / (2 * sigma * sigma));
+            const defectsThisWeek = totalDefects * pdf;
+
+            cumulativeDefects += defectsThisWeek;
+
+            data.push({
+                semana: t,
+                defectos: Number(defectsThisWeek.toFixed(2)),
+                acumulado: Number(cumulativeDefects.toFixed(2))
+            });
         }
+
+        // 5. Calculate Phase Distribution (Where?)
+        const phases = [
+            { name: 'Requisitos', value: Math.round(totalDefects * 0.15), color: '#3B82F6' },
+            { name: 'Diseño', value: Math.round(totalDefects * 0.25), color: '#8B5CF6' },
+            { name: 'Codificación', value: Math.round(totalDefects * 0.40), color: '#EF4444' },
+            { name: 'Pruebas', value: Math.round(totalDefects * 0.20), color: '#10B981' }
+        ];
+
+        setResults({
+            sigma: sigma.toFixed(2),
+            tPeak: tPeak.toFixed(2),
+            totalDefects: Math.round(totalDefects),
+            data
+        });
+        setPhaseDistribution(phases);
     };
 
     return (
         <div className="space-y-6">
             <header>
-                <h2 className="text-2xl font-bold text-gray-800">Modelo Predictivo Rayleigh (Mejorado)</h2>
-                <p className="text-gray-500">Estimación inteligente basada en historia y KPIs en tiempo real</p>
+                <h2 className="text-2xl font-bold text-gray-800">Modelo Predictivo Rayleigh</h2>
+                <p className="text-gray-500">Estimación de defectos y distribución temporal</p>
             </header>
 
-            {/* Input Form */}
+            {/* Input Form - Moved to Top */}
             <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
                 <div className="flex items-center space-x-2 mb-4 text-corporate-blue border-b pb-2">
                     <Calculator size={20} />
@@ -99,98 +137,101 @@ const RayleighModel = () => {
                         </select>
                     </div>
 
-                </div>
-
-                <div className="mt-6">
                     <button
                         onClick={calculateRayleigh}
-                        disabled={loading}
-                        className="w-full bg-corporate-blue text-white py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
+                        className="w-full bg-corporate-blue text-white py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
                     >
-                        {loading ? <span>Procesando...</span> : (
-                            <>
-                                <Play size={18} />
-                                <span>Ejecutar Modelo Inteligente</span>
-                            </>
-                        )}
+                        <Play size={18} />
+                        <span>Ejecutar Modelo</span>
                     </button>
                 </div>
-                {error && <p className="text-red-500 text-sm mt-2 text-center">{error}</p>}
             </div>
 
             {/* Results */}
-            {results && (
-                <div className="space-y-6">
+            <div className="space-y-6">
+                {results ? (
+                    <>
+                        {/* Top Row: Stats & Pie Chart */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Stats Cards (2/3 width) */}
+                            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 h-full">
+                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center items-center text-center">
+                                    <div className="text-sm text-gray-500 mb-1">Defectos Totales (Est.)</div>
+                                    <div className="text-3xl font-bold text-blue-600">{results.totalDefects}</div>
+                                </div>
+                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center items-center text-center">
+                                    <div className="text-sm text-gray-500 mb-1">Semana Pico (t_peak)</div>
+                                    <div className="text-3xl font-bold text-purple-600">{results.tPeak}</div>
+                                </div>
+                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-center items-center text-center">
+                                    <div className="text-sm text-gray-500 mb-1">Sigma (σ)</div>
+                                    <div className="text-3xl font-bold text-orange-600">{results.sigma}</div>
+                                </div>
+                            </div>
 
-                    {/* Risk Analysis Banner */}
-                    <div className={`p-4 rounded-xl border flex items-start space-x-4 ${getRiskColor(results.risk_analysis.level)}`}>
-                        <AlertTriangle className="mt-1 flex-shrink-0" />
-                        <div>
-                            <h3 className="font-bold text-lg">Nivel de Riesgo: {results.risk_analysis.level} (Score: {results.risk_analysis.score}/100)</h3>
-                            <p className="mt-1">{results.risk_analysis.explanation}</p>
-                            {results.risk_analysis.factors.length > 0 && (
-                                <ul className="mt-2 list-disc list-inside text-sm opacity-90">
-                                    {results.risk_analysis.factors.map((f, i) => <li key={i}>{f}</li>)}
-                                </ul>
-                            )}
+                            {/* Phase Distribution (Where?) - Top Right (1/3 width) */}
+                            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center">
+                                <h3 className="text-sm font-bold mb-2 text-gray-800 w-full text-center">Distribución de Defectos</h3>
+                                <div className="h-40 w-full flex items-center justify-center">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={phaseDistribution}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={40}
+                                                outerRadius={60}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                            >
+                                                {phaseDistribution.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div className="flex flex-wrap justify-center gap-3 mt-2 text-xs text-gray-500">
+                                    {phaseDistribution.map((entry, index) => (
+                                        <div key={index} className="flex items-center space-x-1">
+                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }}></div>
+                                            <span>{entry.name}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
+
+                        {/* Bottom Row: Rayleigh Curve (Full Width) */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                            <h3 className="text-lg font-bold mb-4 text-gray-800">Curva de Descubrimiento de Defectos (Cuándo)</h3>
+                            <div className="h-96">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={results.data} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                        <XAxis dataKey="semana" type="number" domain={['dataMin', 'dataMax']} label={{ value: 'Semanas', position: 'insideBottom', offset: -5 }} />
+                                        <YAxis yAxisId="left" />
+                                        <YAxis yAxisId="right" orientation="right" />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        />
+                                        <Legend verticalAlign="top" height={36} />
+                                        <ReferenceLine yAxisId="left" x={Number(results.sigma)} stroke="#ea580c" strokeDasharray="3 3" label={{ value: `σ: ${results.sigma}`, position: 'top', fill: '#ea580c' }} />
+                                        <Line yAxisId="left" type="monotone" dataKey="defectos" name="Defectos por Semana" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                                        <Line yAxisId="right" type="monotone" dataKey="acumulado" name="Defectos Acumulados" stroke="#9333ea" strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                    <div className="h-64 flex flex-col items-center justify-center bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 text-gray-400">
+                        <Calculator size={48} className="mb-4 opacity-50" />
+                        <p>Ingrese los parámetros arriba y ejecute el modelo para ver los resultados.</p>
                     </div>
-
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-                            <div className="text-sm text-gray-500 mb-1">Defectos Totales (Ajustado)</div>
-                            <div className="text-2xl font-bold text-blue-600">{results.enhanced_prediction.adjusted_total_defects}</div>
-                            <div className="text-xs text-gray-400 line-through">Estándar: {results.original_prediction.total_defects_estimated}</div>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-                            <div className="text-sm text-gray-500 mb-1">Pico (Semanas)</div>
-                            <div className="text-2xl font-bold text-purple-600">{results.enhanced_prediction.adjusted_sigma}</div>
-                            <div className="text-xs text-gray-400">Original: {results.original_prediction.sigma}</div>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-                            <div className="text-sm text-gray-500 mb-1">Tasa Histórica Usada</div>
-                            <div className="text-2xl font-bold text-green-600">{results.adjustments.historical_rate_used}</div>
-                            <div className="text-xs text-gray-400">Defectos/Hora</div>
-                        </div>
-                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center">
-                            <div className="text-sm text-gray-500 mb-1">Tamaño Equipo Promedio</div>
-                            <div className="text-2xl font-bold text-orange-600">{results.adjustments.historical_avg_team_size}</div>
-                            <div className="text-xs text-gray-400">Personas</div>
-                        </div>
-                    </div>
-
-                    {/* Chart */}
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                        <h3 className="text-lg font-bold mb-4 text-gray-800">Comparativa: Estándar vs Ajustada por Realidad</h3>
-                        <div className="h-96">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={results.enhanced_prediction.weekly_predictions} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="week" label={{ value: 'Semanas', position: 'insideBottom', offset: -5 }} />
-                                    <YAxis />
-                                    <Tooltip contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                                    <Legend verticalAlign="top" height={36} />
-
-                                    {/* Original Curve (from separate data structure, need to merge or map) 
-                                        Since recharts needs one array, we'll assume the weeks align (they should).
-                                        We can map original data to the enhanced data array for display.
-                                    */}
-                                    <Line type="monotone" dataKey="defects" name="Predicción Ajustada (Inteligente)" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} />
-
-                                    {/* We need to overlay the original data. For simplicity in this step, we visualize the enhanced one primarily. 
-                                        To show both, we'd need to merge the arrays. Let's do a quick merge on the fly if possible or just show enhanced.
-                                        Ideally, the backend returns them aligned.
-                                    */}
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <p className="text-sm text-gray-500 mt-2 text-center">
-                            La curva azul muestra la predicción ajustada considerando los retrasos, productividad y riesgos actuales del proyecto.
-                        </p>
-                    </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };
