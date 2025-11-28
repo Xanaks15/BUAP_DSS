@@ -40,7 +40,7 @@ const FilterPanel = ({ isOpen, onClose, currentFilters, onApply, onClear }) => {
                         onChange={(e) => handleChange('status', e.target.value)}
                     >
                         <option value="all">Todos</option>
-                        <option value="activo">Activo</option>
+
                         <option value="completado">Completado</option>
                         <option value="cancelado">Cancelado</option>
                     </select>
@@ -63,18 +63,21 @@ const FilterPanel = ({ isOpen, onClose, currentFilters, onApply, onClear }) => {
                     </select>
                 </div>
 
-                {/* Client */}
+                {/* Country */}
                 <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Cliente</label>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">País</label>
                     <select
                         className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        value={localFilters.client}
-                        onChange={(e) => handleChange('client', e.target.value)}
+                        value={localFilters.country}
+                        onChange={(e) => handleChange('country', e.target.value)}
                     >
                         <option value="all">Todos</option>
-                        <option value="cliente1">Cliente A</option>
-                        <option value="cliente2">Cliente B</option>
-                        <option value="cliente3">Cliente C</option>
+                        <option value="México">México</option>
+                        <option value="Chile">Chile</option>
+                        <option value="Colombia">Colombia</option>
+                        <option value="Argentina">Argentina</option>
+                        <option value="España">España</option>
+                        <option value="Estados Unidos">Estados Unidos</option>
                     </select>
                 </div>
 

@@ -22,8 +22,7 @@ const Dashboard = () => {
         endDate: '',
         type: 'all',
         status: 'all',
-        client: 'all',
-        query: ''
+        country: 'all',
     });
 
     useEffect(() => {
@@ -80,6 +79,7 @@ const Dashboard = () => {
                     cost_real_vs_planned_pct: data.cost_real_vs_planned_pct || 0,
                     avg_employees_assigned: data.avg_employees_assigned || 0,
                     projects_by_status: data.projects_by_status || {},
+                    productivity: data.productivity || 0,
 
                     // New metrics from backend
                     avg_roi: data.avg_roi || 0,
@@ -128,6 +128,7 @@ const Dashboard = () => {
                     cost_real_vs_planned_pct: data.cost_real_vs_planned_pct || 0,
                     avg_employees_assigned: data.avg_employees_assigned || 0,
                     projects_by_status: data.projects_by_status || {},
+                    productivity: data.productivity || 0,
 
                     total_hours_planned: data.total_hours_planned,
                     total_hours_real: data.total_hours_real
@@ -163,8 +164,7 @@ const Dashboard = () => {
             endDate: '',
             type: 'all',
             status: 'all',
-            client: 'all',
-            query: ''
+            country: 'all'
         });
         setIsFilterOpen(false);
     };
@@ -172,7 +172,7 @@ const Dashboard = () => {
     const activeFiltersCount = [
         filters.type !== 'all',
         filters.status !== 'all',
-        filters.client !== 'all',
+        filters.country !== 'all',
         filters.startDate !== '',
         filters.endDate !== ''
     ].filter(Boolean).length;
@@ -282,16 +282,7 @@ const Dashboard = () => {
 
                     {/* Right: Search & Filter */}
                     <div className="flex items-center gap-3 w-full lg:w-auto">
-                        <div className="relative flex-1 lg:w-64">
-                            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Buscar..."
-                                className="w-full pl-9 pr-4 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                                value={filters.query}
-                                onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value }))}
-                            />
-                        </div>
+
 
                         <div className="relative">
                             <button
@@ -381,7 +372,7 @@ const Dashboard = () => {
                                     <Users size={24} />
                                 </div>
                                 <div>
-                                    <div className="text-sm text-gray-500">{projectMetrics.isPortfolio ? 'Prom. Empleados' : 'Empleados Asignados'}</div>
+                                    <div className="text-sm text-gray-500">Promedio de Empleados</div>
                                     <div className="text-2xl font-bold text-gray-800">{projectMetrics.avg_employees_assigned || projectMetrics.employees_assigned || 0}</div>
                                 </div>
                             </div>
@@ -418,7 +409,9 @@ const Dashboard = () => {
 
                             {/* Projects Status Chart (Always Visible) */}
                             <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col">
-                                <h3 className="text-lg font-semibold text-gray-800 mb-2">Estado de Proyectos</h3>
+                                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                                    Estado de Proyectos <span className="text-sm font-normal text-gray-500 ml-2">(Total: {projectMetrics.total_projects || 0})</span>
+                                </h3>
                                 <div className="flex-1 flex flex-col justify-center">
                                     {/* Bar Chart: Status */}
                                     <div className="h-48">

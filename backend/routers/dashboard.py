@@ -17,7 +17,7 @@ def get_general_kpis(
     end_date: str = None,
     project_type: str = None,
     status: str = None,
-    client: str = None,
+    country: str = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -50,8 +50,8 @@ def get_general_kpis(
         if status and status != 'all':
             query = query.join(DimEstado).filter(DimEstado.nombre_estado == status)
             
-        if client and client != 'all':
-            query = query.join(DimCliente).filter(DimCliente.nombre_cliente == client)
+        if country and country != 'all':
+            query = query.join(DimCliente).filter(DimCliente.pais == country)
 
         # Fetch results
         results = query.all()
@@ -144,6 +144,7 @@ def get_general_kpis(
         tasks_not_completed_pct = 100 - tasks_completed_pct
         
         productivity = total_ev / total_hours_real if total_hours_real > 0 else 0
+        print(f"DEBUG: Type={project_type}, Projects={total_projects}, EV={total_ev}, HoursReal={total_hours_real}, Prod={productivity}")
         
         # Risk Status
         portfolio_spi = total_ev / total_pv if total_pv > 0 else 0
@@ -206,7 +207,7 @@ def get_general_kpis(
             "tasks_delayed_pct": round(tasks_delayed_pct, 1),
             "tasks_not_completed_pct": round(tasks_not_completed_pct, 1),
             "avg_employees_assigned": round(avg_employees_assigned, 1),
-            "productivity": round(productivity, 2),
+            "productivity": round(productivity, 4),
             "projects_by_status": status_counts_dict,
             "defects_by_phase": defects_by_phase,
             "defects_by_severity": defects_by_severity

@@ -5,7 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 const ExecutiveSummary = ({ metrics }) => {
     if (!metrics) return <div>Loading...</div>;
 
-    const { spi, cpi, risk_status, productivity, ev, pv, ac } = metrics;
+    const { spi, cpi, risk_status, ev, pv, ac } = metrics;
 
     // Determine colors based on values
     const riskColor = risk_status === 'Low' ? '#00A65A' : risk_status === 'Medium' ? '#F59E0B' : '#C80000';
@@ -28,6 +28,7 @@ const ExecutiveSummary = ({ metrics }) => {
     // Calculate Planned Productivity
     const planned_hours = metrics.total_hours_planned || metrics.horas_planificadas || 1;
     const planned_productivity = (metrics.pv || 0) / (planned_hours > 0 ? planned_hours : 1);
+    const real_productivity = Number(metrics.productivity || 0);
 
     return (
         <div className="space-y-6">
@@ -103,7 +104,7 @@ const ExecutiveSummary = ({ metrics }) => {
                                 layout="vertical"
                                 data={[
                                     { name: 'Plan', value: planned_productivity },
-                                    { name: 'Real', value: productivity }
+                                    { name: 'Real', value: real_productivity }
                                 ]}
                                 margin={{ top: 0, right: 45, left: 0, bottom: 0 }}
                             >
@@ -115,7 +116,7 @@ const ExecutiveSummary = ({ metrics }) => {
                                     {
                                         [
                                             { name: 'Plan', value: planned_productivity },
-                                            { name: 'Real', value: productivity }
+                                            { name: 'Real', value: real_productivity }
                                         ].map((entry, index) => (
                                             <Cell key={`cell-${index}`} fill={index === 0 ? '#3B82F6' : (entry.value >= planned_productivity ? '#10B981' : '#F59E0B')} />
                                         ))

@@ -16,7 +16,7 @@ export const getGeneralKPIs = async (filters = {}) => {
     if (filters.endDate) params.end_date = filters.endDate;
     if (filters.type && filters.type !== 'all') params.project_type = filters.type;
     if (filters.status && filters.status !== 'all') params.status = filters.status;
-    if (filters.client && filters.client !== 'all') params.client = filters.client;
+    if (filters.country && filters.country !== 'all') params.country = filters.country;
 
     const response = await api.get('/dashboard/kpis/general', { params });
     return response.data;
